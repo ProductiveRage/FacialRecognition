@@ -74,9 +74,6 @@ namespace Tester
 				}
 				timer.Log($"Expanded initial skin mask (fixed loop count of {config.NumberOfSkinMaskRelaxedExpansions})");
 
-				if (config.EnableSecondSkinMaskExpansion)
-					skinMask = TrimOverExpandedEdges(ExpandToCloseHoles(skinMask, timer), smoothedHues, config.RelaxedSkinFilter, timer);
-
 				// Jay Kapur takes the skin map and multiplies by a greyscale conversion of the original image, then stretches the histogram to improve contrast, finally taking a
 				// threshold of 95-240 to mark regions that show skin areas. This is approximated here by combining the skin map with greyscale'd pixels from the original data and
 				// using a slightly different threshold range.
@@ -133,98 +130,6 @@ namespace Tester
 			area.Inflate((int)Math.Round(area.Width * percentageToAdd), (int)Math.Round(area.Height * percentageToAdd)); // Rectangle is a struct so we're not messing with the caller's Rectangle reference
 			area.Intersect(new Rectangle(new Point(0, 0), imageSize));
 			return area;
-		}
-
-		/// <summary>
-		/// Rough attempt at hole-closing (look for pixels that aren't in the mask but that have at least half of its neighbours that are). This is a little too generous with
-		/// its matching and so there will likely be too many pixels pulled in around edges. As such, another pass will be required to pull the edges in (if this pass was less
-		/// generous then it would be more likely to miss some skin content).
-		/// </summary>
-		private static DataRectangle<bool> ExpandToCloseHoles(DataRectangle<bool> skinMask, IntervalTimer timer)
-		{
-			if (skinMask == null)
-				throw new ArgumentNullException(nameof(skinMask));
-			if (timer == null)
-				throw new ArgumentNullException(nameof(timer));
-
-			var scale = CalculateScale(skinMask.Width, skinMask.Height);
-			var loopsRequiredForExpansion = 0;
-			while (true)
-			{
-				var filledPixel = false;
-				skinMask = skinMask.Transform((mask, coordinates) =>
-				{
-					if (mask)
-						return true;
-					var distanceToExpand = scale;
-					var surroundingArea = GetRectangleAround(skinMask, coordinates, distanceToExpandLeftAndUp: distanceToExpand, distanceToExpandRightAndDown: distanceToExpand);
-					var minimumNumberOfMatches = (int)Math.Round(((surroundingArea.Width * surroundingArea.Height) - 1) * 0.5);
-					if (skinMask.DoValuesMatch(surroundingArea, adjacentMask => adjacentMask, minimumNumberOfMatches))
-					{
-						filledPixel = true;
-						return true;
-					}
-					return false;
-				});
-				loopsRequiredForExpansion++;
-				if (!filledPixel)
-					break;
-			}
-			timer.Log($"Completed hole-closing of skin mask (loops required {loopsRequiredForExpansion})");
-			return skinMask;
-		}
-
-		/// <summary>
-		/// Since ExpandToCloseHoles will often pull in a little too much content, some extraneous pixels around the sides may need removing
-		/// </summary>
-		private static DataRectangle<bool> TrimOverExpandedEdges(DataRectangle<bool> skinMask, DataRectangle<HueSaturation> smoothedHues, Func<HueSaturation, bool> relaxedSkinFilter, IntervalTimer timer)
-		{
-			if (skinMask == null)
-				throw new ArgumentNullException(nameof(skinMask));
-			if (smoothedHues == null)
-				throw new ArgumentNullException(nameof(smoothedHues));
-			if (relaxedSkinFilter == null)
-				throw new ArgumentNullException(nameof(relaxedSkinFilter));
-			if (timer == null)
-				throw new ArgumentNullException(nameof(timer));
-
-			if ((skinMask.Width != smoothedHues.Width) || (skinMask.Height != smoothedHues.Height))
-				throw new ArgumentException($"{nameof(skinMask)} and {nameof(smoothedHues)} arrays are different sizes");
-
-			// Outer trim (since the hole-closing often expands too far out)
-			var scale = CalculateScale(skinMask.Width, skinMask.Height);
-			var loopsRequiredForContraction = 0;
-			while (true)
-			{
-				var revokedPixel = false;
-				skinMask = skinMask.CombineWith(
-					smoothedHues,
-					(mask, hue, coordinates) =>
-					{
-						if (!mask || relaxedSkinFilter(hue))
-							return mask;
-
-						// When first testing this, I was using small images which had a scale value of one. I wanted to remove non-skin pixels from the edges only (didn't want
-						// to risk carving holes back in) and the way to guess that it was an edge was if three of the directly-surrounding pixels suggested that.. TODO: I can't
-						// remember exactly what the logic was - but it's probably not important since I'm likely to get rid of this
-						var distanceToExpand = scale;
-						var surroundingArea = GetRectangleAround(skinMask, coordinates, distanceToExpandLeftAndUp: distanceToExpand, distanceToExpandRightAndDown: distanceToExpand);
-						var minimumNumberOfMatches = (int)Math.Round(((surroundingArea.Width * surroundingArea.Height) - 1) * (3d / 8d));
-						if (skinMask.DoValuesMatch(surroundingArea, adjacentMask => !adjacentMask, minimumNumberOfMatches: minimumNumberOfMatches)
-						&& !smoothedHues.DoValuesMatch(surroundingArea, relaxedSkinFilter, minimumNumberOfMatches))
-						{
-							revokedPixel = true;
-							return false;
-						}
-						return true;
-					}
-				);
-				loopsRequiredForContraction++;
-				if (!revokedPixel)
-					break;
-			}
-			timer.Log($"Completed post-hole-closing tidy-up (loops required {loopsRequiredForContraction})");
-			return skinMask;
 		}
 
 		private static IEnumerable<Rectangle> IdentifyFacesFromSkinMask(DataRectangle<bool> skinMask)

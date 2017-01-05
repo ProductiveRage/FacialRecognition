@@ -42,7 +42,6 @@ namespace Tester
 			// See http://web.archive.org/web/20090723024922/http:/geocities.com/jaykapur/face.html
 			return (colour.Hue >= 110) && (colour.Hue <= 180) && (colour.Saturation >= 0) && (colour.Saturation <= 180);
 		}
-		public virtual bool EnableSecondSkinMaskExpansion { get { return false; } }
 		public virtual IEnumerable<Rectangle> FaceRegionAspectRatioFilter(IEnumerable<Rectangle> areas)
 		{
 			if (areas == null)

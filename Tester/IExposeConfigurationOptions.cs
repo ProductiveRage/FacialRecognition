@@ -14,7 +14,6 @@ namespace Tester
 		bool SkinFilter(HueSaturation colour);
 		int NumberOfSkinMaskRelaxedExpansions { get; }
 		bool RelaxedSkinFilter(HueSaturation colour);
-		bool EnableSecondSkinMaskExpansion { get; }
 		IEnumerable<Rectangle> FaceRegionAspectRatioFilter(IEnumerable<Rectangle> areas);
 		double PercentToExpandFinalFaceRegionBy { get; }
 		Color OutlineColour { get; }

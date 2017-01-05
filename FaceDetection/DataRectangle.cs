@@ -79,32 +79,19 @@ namespace FaceDetection
 
 		public bool AnyValuesMatch(Rectangle area, Func<T, bool> filter)
 		{
-			if (filter == null)
-				throw new ArgumentNullException(nameof(filter));
-
-			return DoValuesMatch(area, filter, minimumNumberOfMatches: 1);
-		}
-
-		public bool DoValuesMatch(Rectangle area, Func<T, bool> filter, int minimumNumberOfMatches)
-		{
 			if ((area.Left < 0) || (area.Right > Width) || (area.Top < 0) || (area.Bottom > Height))
 				throw new ArgumentOutOfRangeException(nameof(area));
 			if (filter == null)
 				throw new ArgumentNullException(nameof(filter));
-			if (minimumNumberOfMatches <= 0)
-				throw new ArgumentOutOfRangeException(nameof(minimumNumberOfMatches));
+			if (filter == null)
+				throw new ArgumentNullException(nameof(filter));
 
-			var numberOfMatches = 0;
 			for (var x = area.Left; x < area.Right; x++)
 			{
 				for (var y = area.Top; y < area.Bottom; y++)
 				{
 					if (filter(_protectedValues[x, y]))
-					{
-						numberOfMatches++;
-						if (numberOfMatches >= minimumNumberOfMatches)
-							return true;
-					}
+						return true;
 				}
 			}
 			return false;
