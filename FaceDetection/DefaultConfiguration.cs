@@ -30,6 +30,10 @@ namespace FaceDetection
 		}
 		public int RgBySmoothenMultiplier { get { return 2; } }
 
+		/// <summary>
+		/// A first pass is made to try to create a skin mask, this filter dictates what pixels are acceptable for that pass (taking into account hue, saturation and
+		/// texture amplitude)
+		/// </summary>
 		public bool SkinFilter(HueSaturation colour)
 		{
 			// Started with recommendations from http://web.archive.org/web/20090723024922/http:/geocities.com/jaykapur/face.html but tweaked them a little (annotated below)
@@ -40,6 +44,10 @@ namespace FaceDetection
 				)
 				&& (colour.TextureAmplitude <= 9); // Some photos seem to need to accept a higher text amplitude, particularly if the face is a relatively small part of the image
 		}
+		/// <summary>
+		/// After the first skin mask pass, a number of subsequent passes (see NumberOfSkinMaskRelaxedExpansions) are made to expand the mask to include any nearby pixels
+		/// using more relaxed criteria (to make it more likely that edge pixels that are in shade, for example, are captured)
+		/// </summary>
 		public bool RelaxedSkinFilter(HueSaturation colour)
 		{
 			// This is the same as described at http://web.archive.org/web/20090723024922/http:/geocities.com/jaykapur/face.html, which is the same as the article "Naked People Skin
@@ -48,6 +56,9 @@ namespace FaceDetection
 		}
 		public int NumberOfSkinMaskRelaxedExpansions { get { return 5; } }
 
+		/// <summary>
+		/// Some regions may be ignore outright if their aspect ratios seem wrong (a very long, narrow region is unlikely to be a meaninful face capture, for example)
+		/// </summary>
 		public IEnumerable<Rectangle> FaceRegionAspectRatioFilter(IEnumerable<Rectangle> areas)
 		{
 			if (areas == null)
