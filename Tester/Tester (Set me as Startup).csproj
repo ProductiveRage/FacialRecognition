@@ -44,9 +44,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="JayKapurOptions.cs" />
-    <Compile Include="TweakedJayKapurOptions.cs" />
-    <Compile Include="IExposeConfigurationOptions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="IntervalTimer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

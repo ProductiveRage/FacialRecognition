@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
-using FaceDetection;
 
-namespace Tester
+namespace FaceDetection
 {
 	// TODO: Document all options
 	public interface IExposeConfigurationOptions

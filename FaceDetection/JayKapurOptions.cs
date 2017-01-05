@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using FaceDetection;
 
-namespace Tester
+namespace FaceDetection
 {
 	public class JayKapurOptions : IExposeConfigurationOptions
 	{

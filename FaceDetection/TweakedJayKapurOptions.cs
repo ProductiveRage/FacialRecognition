@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using FaceDetection;
 
-namespace Tester
+namespace FaceDetection
 {
 	public class TweakedJayKapurOptions : JayKapurOptions
 	{
