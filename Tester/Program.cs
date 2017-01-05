@@ -15,107 +15,130 @@ namespace Tester
 
 			var config = TweakedJayKapurOptions.Instance;
 			var timer = new IntervalTimer(Console.WriteLine);
-			using (var bitmap = new Bitmap(filename))
+			using (var source = new Bitmap(filename))
 			{
-				var scale = CalculateScale(bitmap.Width, bitmap.Height);
-				timer.Log($"Loaded file - Dimensions: {bitmap.Width}x{bitmap.Height}, Scale: {scale}");
-
-				var colourData = CorrectZeroResponse(bitmap.GetRGB());
-				timer.Log("Corrected zero response");
-
-				var values = config.IRgByCalculator(colourData);
-				timer.Log("Calculated I/RgBy values");
-
-				// To compute texture amplitude -
-				//  1. The intensity image was smoothed with a median filter of radius 4 * SCALE (8 for Jay Kapur method)
-				//  2. The result was subtracted from the original image
-				//  3. The absolute values of these differences are then run through a second median filter of radius 6 * SCALE (12 for Jay Kapur method)
-				//  4. This computes a version of the MAD scale estimator used in robust statistics
-				var smoothedIntensity = MedianFilter(values, value => value.I, config.TextureAmplitudeFirstPassSmoothenMultiplier * scale);
-				var differenceBetweenOriginalIntensityAndSmoothIntensity = values.CombineWith(smoothedIntensity, (x, y) => Math.Abs(x.I - y));
-				var textureAmplitude = MedianFilter(differenceBetweenOriginalIntensityAndSmoothIntensity, value => value, config.TextureAmplitudeSecondPassSmoothenMultiplier * scale);
-				timer.Log("Calculated texture amplitude");
-
-				// The Rg and By arrays are smoothed with a median filter of radius 2 * SCALE, to reduce noise.
-				var smoothedRg = MedianFilter(values, value => value.Rg, config.RgBySmoothenMultiplier * scale);
-				var smoothedBy = MedianFilter(values, value => value.By, config.RgBySmoothenMultiplier * scale);
-				var smoothedHues = smoothedRg.CombineWith(
-					smoothedBy,
-					(rg, by, coordinates) =>
-					{
-						var hue = RadianToDegree(Math.Atan2(rg, by));
-						var saturation = Math.Sqrt((rg * rg) + (by * by));
-						return new HueSaturation(hue, saturation, textureAmplitude[coordinates.X, coordinates.Y]);
-					}
-				);
-				timer.Log("Calculated hue data");
-
-				// Generate a mask of pixels identified as skin
-				var skinMask = smoothedHues.Transform(transformer: config.SkinFilter);
-				timer.Log("Built initial skin mask");
-
-				// Now expand the mask to include any adjacent points that match a less strict filter (which "helps to enlarge the skin map regions to include skin/background
-				// border pixels, regions near hair or other features, or desaturated areas" - as per Jay Kapur, though he recommends five iterations and I think that a slightly
-				// higher value may provide better results)
-				for (var i = 0; i < config.NumberOfSkinMaskRelaxedExpansions; i++)
-				{
-					skinMask = skinMask.CombineWith(
-						smoothedHues,
-						(mask, hue, coordinates) =>
-						{
-							if (mask)
-								return true;
-							if (!config.RelaxedSkinFilter(hue))
-								return false;
-							var surroundingArea = GetRectangleAround(smoothedHues, coordinates, distanceToExpandLeftAndUp: 1, distanceToExpandRightAndDown: 1);
-							return skinMask.AnyValuesMatch(surroundingArea, adjacentMask => adjacentMask);
-						}
-					);
-				}
-				timer.Log($"Expanded initial skin mask (fixed loop count of {config.NumberOfSkinMaskRelaxedExpansions})");
-
-				// Jay Kapur takes the skin map and multiplies by a greyscale conversion of the original image, then stretches the histogram to improve contrast, finally taking a
-				// threshold of 95-240 to mark regions that show skin areas. This is approximated here by combining the skin map with greyscale'd pixels from the original data and
-				// using a slightly different threshold range.
-				skinMask = colourData.CombineWith(
-					skinMask,
-					(colour, mask) =>
-					{
-						if (!mask)
-							return false;
-						var intensity = (0.2989 * colour.R) + (0.5870 * colour.G) + (0.1140 * colour.B); // Greyscale formula
-						return (intensity >= 90) && (intensity <= 240);
-					}
-				);
-				timer.Log("Completed final skin mask");
-
-				var faceRegions = config.FaceRegionAspectRatioFilter(IdentifyFacesFromSkinMask(skinMask))
-					.Select(faceRegion => ExpandRectangle(faceRegion, config.PercentToExpandFinalFaceRegionBy, new Size(bitmap.Width, bitmap.Height)))
-					.ToArray();
-				timer.Log("Identified face regions");
-
-				if (faceRegions.Any())
-				{
-					// If the original image uses a palette (ie. an indexed PixelFormat) then GDI+ can't draw rectangle on it so we'll just create a fresh bitmap every time to
-					// be on the safe side
-					using (var annotatedBitMap = new Bitmap(bitmap.Width, bitmap.Height))
-					{
-						using (var g = Graphics.FromImage(annotatedBitMap))
-						{
-							g.DrawImage(bitmap, 0, 0);
-							using (var pen = new Pen(config.OutlineColour, width: 1))
-							{
-								g.DrawRectangles(pen, faceRegions);
-							}
-						}
-						annotatedBitMap.Save(outputFilename);
-					}
-				}
+				var faceRegions = GetPossibleFaceRegions(source, outputFilename, config, timer.Log);
+				WriteOutputFile(outputFilename, source, faceRegions, config.OutlineColour);
+				timer.Log($"Complete (written to {outputFilename}), {faceRegions.Count()} region(s) identified");
 			}
-			timer.Log("Complete (written to " + outputFilename + ")");
 			Console.WriteLine();
 			Console.WriteLine("Press [Enter] to terminate..");
 			Console.ReadLine();
+		}
+
+		private static void WriteOutputFile(string outputFilename, Bitmap source, IEnumerable<Rectangle> faceRegions, Color outline)
+		{
+			if (string.IsNullOrWhiteSpace(outputFilename))
+				throw new ArgumentException($"Null/blank {nameof(outputFilename)} specified");
+			if (source == null)
+				throw new ArgumentNullException(nameof(source));
+			if (faceRegions == null)
+				throw new ArgumentNullException(nameof(faceRegions));
+
+			// If the original image uses a palette (ie. an indexed PixelFormat) then GDI+ can't draw rectangle on it so we'll just create a fresh bitmap every time to
+			// be on the safe side
+			using (var annotatedBitMap = new Bitmap(source.Width, source.Height))
+			{
+				using (var g = Graphics.FromImage(annotatedBitMap))
+				{
+					g.DrawImage(source, 0, 0);
+					using (var pen = new Pen(outline, width: 1))
+					{
+						g.DrawRectangles(pen, faceRegions.ToArray());
+					}
+				}
+				annotatedBitMap.Save(outputFilename);
+			}
+		}
+
+		private static IEnumerable<Rectangle> GetPossibleFaceRegions(Bitmap source, string outputFilename, IExposeConfigurationOptions config, Action<string> logger)
+		{
+			if (source == null)
+				throw new ArgumentNullException(nameof(source));
+			if (string.IsNullOrWhiteSpace(outputFilename))
+				throw new ArgumentException($"Null/blank {nameof(outputFilename)} specified");
+			if (config == null)
+				throw new ArgumentNullException(nameof(config));
+			if (logger == null)
+				throw new ArgumentNullException(nameof(logger));
+
+			var scale = CalculateScale(source.Width, source.Height);
+			logger($"Loaded file - Dimensions: {source.Width}x{source.Height}, Scale: {scale}");
+
+			var colourData = CorrectZeroResponse(source.GetRGB());
+			logger("Corrected zero response");
+
+			var values = config.IRgByCalculator(colourData);
+			logger("Calculated I/RgBy values");
+
+			// To compute texture amplitude -
+			//  1. The intensity image was smoothed with a median filter of radius 4 * SCALE (8 for Jay Kapur method)
+			//  2. The result was subtracted from the original image
+			//  3. The absolute values of these differences are then run through a second median filter of radius 6 * SCALE (12 for Jay Kapur method)
+			//  4. This computes a version of the MAD scale estimator used in robust statistics
+			var smoothedIntensity = MedianFilter(values, value => value.I, config.TextureAmplitudeFirstPassSmoothenMultiplier * scale);
+			var differenceBetweenOriginalIntensityAndSmoothIntensity = values.CombineWith(smoothedIntensity, (x, y) => Math.Abs(x.I - y));
+			var textureAmplitude = MedianFilter(differenceBetweenOriginalIntensityAndSmoothIntensity, value => value, config.TextureAmplitudeSecondPassSmoothenMultiplier * scale);
+			logger("Calculated texture amplitude");
+
+			// The Rg and By arrays are smoothed with a median filter of radius 2 * SCALE, to reduce noise.
+			var smoothedRg = MedianFilter(values, value => value.Rg, config.RgBySmoothenMultiplier * scale);
+			var smoothedBy = MedianFilter(values, value => value.By, config.RgBySmoothenMultiplier * scale);
+			var smoothedHues = smoothedRg.CombineWith(
+				smoothedBy,
+				(rg, by, coordinates) =>
+				{
+					var hue = RadianToDegree(Math.Atan2(rg, by));
+					var saturation = Math.Sqrt((rg * rg) + (by * by));
+					return new HueSaturation(hue, saturation, textureAmplitude[coordinates.X, coordinates.Y]);
+				}
+			);
+			logger("Calculated hue data");
+
+			// Generate a mask of pixels identified as skin
+			var skinMask = smoothedHues.Transform(transformer: config.SkinFilter);
+			logger("Built initial skin mask");
+
+			// Now expand the mask to include any adjacent points that match a less strict filter (which "helps to enlarge the skin map regions to include skin/background
+			// border pixels, regions near hair or other features, or desaturated areas" - as per Jay Kapur, though he recommends five iterations and I think that a slightly
+			// higher value may provide better results)
+			for (var i = 0; i < config.NumberOfSkinMaskRelaxedExpansions; i++)
+			{
+				skinMask = skinMask.CombineWith(
+					smoothedHues,
+					(mask, hue, coordinates) =>
+					{
+						if (mask)
+							return true;
+						if (!config.RelaxedSkinFilter(hue))
+							return false;
+						var surroundingArea = GetRectangleAround(smoothedHues, coordinates, distanceToExpandLeftAndUp: 1, distanceToExpandRightAndDown: 1);
+						return skinMask.AnyValuesMatch(surroundingArea, adjacentMask => adjacentMask);
+					}
+				);
+			}
+			logger($"Expanded initial skin mask (fixed loop count of {config.NumberOfSkinMaskRelaxedExpansions})");
+
+			// Jay Kapur takes the skin map and multiplies by a greyscale conversion of the original image, then stretches the histogram to improve contrast, finally taking a
+			// threshold of 95-240 to mark regions that show skin areas. This is approximated here by combining the skin map with greyscale'd pixels from the original data and
+			// using a slightly different threshold range.
+			skinMask = colourData.CombineWith(
+				skinMask,
+				(colour, mask) =>
+				{
+					if (!mask)
+						return false;
+					var intensity = (0.2989 * colour.R) + (0.5870 * colour.G) + (0.1140 * colour.B); // Greyscale formula
+					return (intensity >= 90) && (intensity <= 240);
+				}
+			);
+			logger("Completed final skin mask");
+
+			var faceRegions = config.FaceRegionAspectRatioFilter(IdentifyFacesFromSkinMask(skinMask))
+				.Select(faceRegion => ExpandRectangle(faceRegion, config.PercentToExpandFinalFaceRegionBy, new Size(source.Width, source.Height)))
+				.ToArray();
+			logger("Identified face regions");
+			return faceRegions;
 		}
 
 		private static Rectangle ExpandRectangle(Rectangle area, double percentageToAdd, Size imageSize)
@@ -204,7 +227,7 @@ namespace Tester
 				if ((currentPoint.X < limitTo.Left) || (currentPoint.X >= limitTo.Right) || (currentPoint.Y < limitTo.Top) || (currentPoint.Y >= limitTo.Bottom)) // make sure we stay within bounds
 					continue;
 
-				if ((mask[currentPoint.X, currentPoint.Y] == valueAtOriginPoint) &&  !filledPixels.Contains(currentPoint))
+				if ((mask[currentPoint.X, currentPoint.Y] == valueAtOriginPoint) && !filledPixels.Contains(currentPoint))
 				{
 					filledPixels.Add(new Point(currentPoint.X, currentPoint.Y));
 					pixels.Push(new Point(currentPoint.X - 1, currentPoint.Y));
