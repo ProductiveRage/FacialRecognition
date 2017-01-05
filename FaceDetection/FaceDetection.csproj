@@ -46,11 +46,10 @@
     <Compile Include="IExposeConfigurationOptions.cs" />
     <Compile Include="IRgBy.cs" />
     <Compile Include="FaceDetector.cs" />
-    <Compile Include="JayKapurOptions.cs" />
+    <Compile Include="DefaultConfiguration.cs" />
     <Compile Include="RGB.cs" />
     <Compile Include="BitmapExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TweakedJayKapurOptions.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

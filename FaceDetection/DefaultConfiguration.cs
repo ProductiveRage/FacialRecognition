@@ -5,12 +5,34 @@ using System.Linq;
 
 namespace FaceDetection
 {
-	public class TweakedJayKapurOptions : JayKapurOptions
+	public sealed class DefaultConfiguration : IExposeConfigurationOptions
 	{
-		public new static IExposeConfigurationOptions Instance => new TweakedJayKapurOptions();
-		protected TweakedJayKapurOptions() { }
-		public override bool SkinFilter(HueSaturation colour)
+		public static IExposeConfigurationOptions Instance => new DefaultConfiguration();
+		private DefaultConfiguration() { }
+
+		public int TextureAmplitudeFirstPassSmoothenMultiplier { get { return 8; } }
+		public int TextureAmplitudeSecondPassSmoothenMultiplier { get { return 12; } }
+
+		public DataRectangle<IRgBy> IRgByCalculator(DataRectangle<RGB> values)
 		{
+			if (values == null)
+				throw new ArgumentNullException(nameof(values));
+
+			// See http://web.archive.org/web/20090723024922/http:/geocities.com/jaykapur/face.html
+			Func<byte, double> L = x => (105 * Math.Log10(x + 1));
+			return values.Transform(
+				value => new IRgBy(
+					rg: L(value.R) - L(value.G),
+					by: L(value.B) - ((L(value.G) + L(value.R)) / 2),
+					i: (L(value.R) + L(value.B) + L(value.G)) / 3
+				)
+			);
+		}
+		public int RgBySmoothenMultiplier { get { return 2; } }
+
+		public bool SkinFilter(HueSaturation colour)
+		{
+			// Started with recommendations from http://web.archive.org/web/20090723024922/http:/geocities.com/jaykapur/face.html but tweaked them a little (annotated below)
 			return (
 					((colour.Hue >= 105) && (colour.Hue <= 120) && (colour.Saturation >= 10) && (colour.Saturation <= 60)) || // Reduced minimum hue slightly to allow some lighter tones
 					((colour.Hue >= 120) && (colour.Hue <= 160) && (colour.Saturation >= 10) && (colour.Saturation <= 60)) ||
@@ -18,7 +40,15 @@ namespace FaceDetection
 				)
 				&& (colour.TextureAmplitude <= 9); // Some photos seem to need to accept a higher text amplitude, particularly if the face is a relatively small part of the image
 		}
-		public override IEnumerable<Rectangle> FaceRegionAspectRatioFilter(IEnumerable<Rectangle> areas)
+		public bool RelaxedSkinFilter(HueSaturation colour)
+		{
+			// This is the same as described at http://web.archive.org/web/20090723024922/http:/geocities.com/jaykapur/face.html, which is the same as the article "Naked People Skin
+			// Filter (Margaret M. Fleck and David A Forsyth)" that it references (https://www.cs.hmc.edu/~fleck/naked-skin.html)
+			return (colour.Hue >= 110) && (colour.Hue <= 180) && (colour.Saturation >= 0) && (colour.Saturation <= 180);
+		}
+		public int NumberOfSkinMaskRelaxedExpansions { get { return 5; } }
+
+		public IEnumerable<Rectangle> FaceRegionAspectRatioFilter(IEnumerable<Rectangle> areas)
 		{
 			if (areas == null)
 				throw new ArgumentNullException(nameof(areas));
@@ -47,7 +77,8 @@ namespace FaceDetection
 					yield return area;
 			}
 		}
-		public override double PercentToExpandFinalFaceRegionBy { get { return 0.1; } }
+
+		public double PercentToExpandFinalFaceRegionBy { get { return 0.1; } }
 
 		private static double GetArea(Rectangle area)
 		{

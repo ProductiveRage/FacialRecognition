@@ -15,6 +15,5 @@ namespace FaceDetection
 		bool RelaxedSkinFilter(HueSaturation colour);
 		IEnumerable<Rectangle> FaceRegionAspectRatioFilter(IEnumerable<Rectangle> areas);
 		double PercentToExpandFinalFaceRegionBy { get; }
-		Color OutlineColour { get; }
 	}
 }

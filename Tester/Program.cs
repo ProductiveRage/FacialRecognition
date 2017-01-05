@@ -13,13 +13,13 @@ namespace Tester
 			var filename = "TigerWoods.gif";
 			var outputFilename = "Output.png";
 
-			var config = TweakedJayKapurOptions.Instance;
+			var config = DefaultConfiguration.Instance;
 			var timer = new IntervalTimer(Console.WriteLine);
 			var faceDetector = new FaceDetector(config, timer.Log);
 			using (var source = new Bitmap(filename))
 			{
 				var faceRegions = faceDetector.GetPossibleFaceRegions(source);
-				WriteOutputFile(outputFilename, source, faceRegions, config.OutlineColour);
+				WriteOutputFile(outputFilename, source, faceRegions, Color.GreenYellow);
 				timer.Log($"Complete (written to {outputFilename}), {faceRegions.Count()} region(s) identified");
 			}
 			Console.WriteLine();

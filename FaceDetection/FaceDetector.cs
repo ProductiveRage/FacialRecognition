@@ -22,6 +22,7 @@ namespace FaceDetection
 			_config = config;
 			_logger = logger;
 		}
+		public FaceDetector(Action<string> logger) : this(DefaultConfiguration.Instance, logger) { }
 
 		public IEnumerable<Rectangle> GetPossibleFaceRegions(Bitmap source)
 		{
