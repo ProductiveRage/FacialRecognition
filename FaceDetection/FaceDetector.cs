@@ -220,22 +220,26 @@ namespace FaceDetection
 			return angle * (180d / Math.PI);
 		}
 
-		private static DataRectangle<double> MedianFilter<TSource>(DataRectangle<TSource> values, Func<TSource, double> valueExtractor, int distanceToExpandRightAndDown)
+		/// <summary>
+		/// This reduces variance in data by breaking it into blocks and overwriting the block's data with a single value - the median value for that block
+		/// </summary>
+		private static DataRectangle<double> MedianFilter<TSource>(DataRectangle<TSource> values, Func<TSource, double> valueExtractor, int blockSize)
 		{
 			if (values == null)
 				throw new ArgumentNullException(nameof(values));
 			if (valueExtractor == null)
 				throw new ArgumentNullException(nameof(valueExtractor));
-			if (distanceToExpandRightAndDown <= 0)
-				throw new ArgumentOutOfRangeException(nameof(distanceToExpandRightAndDown));
+			if (blockSize <= 0)
+				throw new ArgumentOutOfRangeException(nameof(blockSize));
 
 			var result = new double[values.Width, values.Height];
-			var distanceBetweenPoints = distanceToExpandRightAndDown + 1; // After each media is taken, we need to move past the current pixel and then the expansions distance to get the new centre
+			var distanceBetweenPoints = blockSize + 1; // After each media is taken, we need to move past the current pixel and then the expansions distance to get the new centre
 			for (var x = 0; x < values.Width; x += distanceBetweenPoints)
 			{
 				for (var y = 0; y < values.Height; y += distanceBetweenPoints)
 				{
-					var areaToMedianOver = GetRectangleAround(values, new Point(x, y), distanceToExpandLeftAndUp: 0, distanceToExpandRightAndDown: distanceToExpandRightAndDown); // TODO: Explain(?)
+					// We start at the top-left and move across and down from there (so GetRectangleAround never expands up and left, it only expands down and right)
+					var areaToMedianOver = GetRectangleAround(values, new Point(x, y), distanceToExpandLeftAndUp: 0, distanceToExpandRightAndDown: blockSize);
 					var valuesToGetMedianFrom = new double[areaToMedianOver.Width * areaToMedianOver.Height];
 					var i = 0;
 					for (var xToGetMedianFrom = areaToMedianOver.Left; xToGetMedianFrom < areaToMedianOver.Right; xToGetMedianFrom++)
