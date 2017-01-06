@@ -83,9 +83,12 @@ namespace Tester
 				using (var g = Graphics.FromImage(annotatedBitMap))
 				{
 					g.DrawImage(source, 0, 0);
-					using (var pen = new Pen(outline, width: 1))
+					if (faceRegions.Any())
 					{
-						g.DrawRectangles(pen, faceRegions.ToArray());
+						using (var pen = new Pen(outline, width: 1))
+						{
+							g.DrawRectangles(pen, faceRegions.ToArray());
+						}
 					}
 				}
 				annotatedBitMap.Save(outputFilename);
