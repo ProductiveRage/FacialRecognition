@@ -48,7 +48,6 @@
     <Compile Include="FaceDetector.cs" />
     <Compile Include="DefaultConfiguration.cs" />
     <Compile Include="RGB.cs" />
-    <Compile Include="BitmapExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

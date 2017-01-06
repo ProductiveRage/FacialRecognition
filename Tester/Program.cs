@@ -18,7 +18,7 @@ namespace Tester
 			var faceDetector = new FaceDetector(config, timer.Log);
 			using (var source = new Bitmap(filename))
 			{
-				var faceRegions = faceDetector.GetPossibleFaceRegions(source);
+				var faceRegions = faceDetector.GetPossibleFaceRegions(source.GetRGB());
 				WriteOutputFile(outputFilename, source, faceRegions, Color.GreenYellow);
 				timer.Log($"Complete (written to {outputFilename}), {faceRegions.Count()} region(s) identified");
 			}

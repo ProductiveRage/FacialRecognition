@@ -24,7 +24,7 @@ namespace FaceDetection
 		}
 		public FaceDetector(Action<string> logger) : this(DefaultConfiguration.Instance, logger) { }
 
-		public IEnumerable<Rectangle> GetPossibleFaceRegions(Bitmap source)
+		public IEnumerable<Rectangle> GetPossibleFaceRegions(DataRectangle<RGB> source)
 		{
 			if (source == null)
 				throw new ArgumentNullException(nameof(source));
@@ -32,7 +32,7 @@ namespace FaceDetection
 			var scale = CalculateScale(source.Width, source.Height);
 			_logger($"Loaded file - Dimensions: {source.Width}x{source.Height}, Scale: {scale}");
 
-			var colourData = CorrectZeroResponse(source.GetRGB());
+			var colourData = CorrectZeroResponse(source);
 			_logger("Corrected zero response");
 
 			var values = _config.IRgByCalculator(colourData);

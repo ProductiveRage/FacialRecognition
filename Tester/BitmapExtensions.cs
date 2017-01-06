@@ -2,8 +2,9 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using FaceDetection;
 
-namespace FaceDetection
+namespace Tester
 {
 	public static class BitmapExtensions
 	{
