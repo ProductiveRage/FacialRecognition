@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace FaceDetection
+namespace Common
 {
 	public static class DataRectangle
 	{

@@ -36,12 +36,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitmapExtensions.cs" />
@@ -53,6 +48,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Common\Common.csproj">
+      <Project>{958e4934-a071-416a-8848-2fa8aca9d484}</Project>
+      <Name>Common</Name>
+    </ProjectReference>
     <ProjectReference Include="..\FaceDetection\FaceDetection.csproj">
       <Project>{c2e63f70-29a1-47a5-a1fc-953f5541965f}</Project>
       <Name>FaceDetection</Name>
