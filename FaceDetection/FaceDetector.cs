@@ -95,7 +95,7 @@ namespace FaceDetection
 				{
 					if (!mask)
 						return false;
-					var intensity = (0.2989 * colour.R) + (0.5870 * colour.G) + (0.1140 * colour.B); // Greyscale formula
+					var intensity = colour.ToGreyScale();
 					return (intensity >= 90) && (intensity <= 240);
 				}
 			);
