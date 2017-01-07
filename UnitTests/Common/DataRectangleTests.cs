@@ -156,6 +156,32 @@ namespace UnitTests.Common
 			});
 		}
 
+		[Fact]
+		public void AnyValuesMatchFor2x2AreaWithin6x4()
+		{
+			var data = DataRectangle.For(Rotate(new[,]
+			{
+				{  1,  2,  3,  4,  5,  6 },
+				{  7,  8,  9, 10, 11, 12 },
+				{ 13, 14, 15, 16, 17, 18 },
+				{ 19, 20, 21, 22, 23, 24 },
+				{ 25, 26, 27, 28, 29, 30 }
+			}));
+			var area = new Rectangle(new Point(1, 1), new Size(2, 1));
+			Assert.True(
+				data.AnyValuesMatch(area, value => value == 8)
+			);
+			Assert.True(
+				data.AnyValuesMatch(area, value => value == 9)
+			);
+			Assert.False(
+				data.AnyValuesMatch(area, value => value < 8)
+			);
+			Assert.False(
+				data.AnyValuesMatch(area, value => value > 9)
+			);
+		}
+
 		/// <summary>
 		/// When declaring a 2D array using the inline initialisation syntax, the x and y values are (to my mind) reversed from how they appear in the code - if a 4x3
 		/// array is defined then there will be three lines with four elements in, which would seem sensible to record as a 4x3 array (where the x value is the width

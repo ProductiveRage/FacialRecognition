@@ -99,10 +99,14 @@ namespace Common
 			if (filter == null)
 				throw new ArgumentNullException(nameof(filter));
 
-			for (var x = _window.Left; x < _window.Right; x++)
+			var startAtX = _window.Left + area.Left;
+			var startAtY = _window.Top + area.Top;
+			for (var offsetX = 0; offsetX < area.Width; offsetX++)
 			{
-				for (var y = _window.Top; y < _window.Bottom; y++)
+				for (var offsetY = 0; offsetY < area.Height; offsetY++)
 				{
+					var x = startAtX + offsetX;
+					var y = startAtY + offsetY;
 					if (filter(_protectedValues[x, y]))
 						return true;
 				}
