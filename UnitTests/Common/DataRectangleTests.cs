@@ -157,7 +157,11 @@ namespace UnitTests.Common
 		}
 
 		/// <summary>
-		/// TODO: Explain
+		/// When declaring a 2D array using the inline initialisation syntax, the x and y values are (to my mind) reversed from how they appear in the code - if a 4x3
+		/// array is defined then there will be three lines with four elements in, which would seem sensible to record as a 4x3 array (where the x value is the width
+		/// of each line). However, in C#, this will actually create a 3x4 array which doesn't visually correspond to the code. This will rotate the array so that
+		/// it the array is changed to the form that I think makes more sense (the Slice6x5Into3x3WithOffset1x1ThenInto2x1With1x1Offset test method is a good
+		/// demonstration of this in practice).
 		/// </summary>
 		private static T[,] Rotate<T>(T[,] data)
 		{
