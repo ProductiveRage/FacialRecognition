@@ -41,7 +41,6 @@
     <Compile Include="IRgBy.cs" />
     <Compile Include="FaceDetector.cs" />
     <Compile Include="DefaultConfiguration.cs" />
-    <Compile Include="RGB.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

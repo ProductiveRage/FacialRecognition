@@ -1,4 +1,4 @@
-﻿namespace FaceDetection
+﻿namespace Common
 {
 	/// <summary>
 	/// This is used instead of the .NET Color struct since that does work when each instance is created and, when we're using this, we just want to stash values

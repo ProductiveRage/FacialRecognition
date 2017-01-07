@@ -6,9 +6,6 @@ using Common;
 
 namespace FaceDetection
 {
-	/// <summary>
-	/// This is used instead of the .NET Color struct since that does work when each instance is created and, when we're using this, we just want to stash values
-	/// </summary>
 	public sealed class FaceDetector
 	{
 		private readonly IExposeConfigurationOptions _config;
