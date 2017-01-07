@@ -130,7 +130,7 @@ namespace FaceDetection
 			// Identify potential objects from positive image (build a list of all skin points, take the first one and flood fill from it - recording the results as one object
 			// and remove all points from the list, then do the same for the next skin point until there are none left)
 			var skinPoints = new HashSet<Point>(
-				skinMask.Enumerate((isMasked, point) => isMasked).Select(point => point.Item1)
+				skinMask.Enumerate((point, isMasked) => isMasked).Select(point => point.Item1)
 			);
 			var scale = CalculateScale(skinMask.Width, skinMask.Height);
 			var skinObjects = new List<Point[]>();
@@ -153,7 +153,7 @@ namespace FaceDetection
 				var top = yValues.Min();
 				var skinObjectBounds = new Rectangle(left, top, width: (xValues.Max() - left) + 1, height: (yValues.Max() - top) + 1);
 				var negativePointsInObject = new HashSet<Point>(
-					skinMask.Enumerate((isMasked, point) => !isMasked && skinObjectBounds.Contains(point)).Select(point => point.Item1)
+					skinMask.Enumerate((point, isMasked) => !isMasked && skinObjectBounds.Contains(point)).Select(point => point.Item1)
 				);
 				while (negativePointsInObject.Any())
 				{

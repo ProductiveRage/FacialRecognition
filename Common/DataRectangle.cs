@@ -17,20 +17,33 @@ namespace Common
 	public sealed class DataRectangle<T>
 	{
 		private readonly T[,] _protectedValues;
-		public DataRectangle(T[,] values) : this(values, isolationCopyMayBeBypassed: false) { }
-		private DataRectangle(T[,] values, bool isolationCopyMayBeBypassed)
+		private readonly Rectangle _window;
+		public DataRectangle(T[,] values) : this(values, window: null, isolationCopyMayBeBypassed: false) { }
+		private DataRectangle(T[,] values, Rectangle? window, bool isolationCopyMayBeBypassed)
 		{
 			if (values == null)
 				throw new ArgumentNullException(nameof(values));
 			if ((values.GetLowerBound(0) != 0) || (values.GetLowerBound(1) != 0))
 				throw new ArgumentException("Both dimensions must have lower bound zero");
-			if ((values.GetUpperBound(0) == 0) || (values.GetUpperBound(1) == 0))
-				throw new ArgumentException($"{nameof(values)} must have at least one element");
-
-			Width = values.GetUpperBound(0) + 1;
-			Height = values.GetUpperBound(1) + 1;
-			if ((Width == 0) || (Height == 0))
+			var arrayWidth = values.GetUpperBound(0) + 1;
+			var arrayHeight = values.GetUpperBound(1) + 1;
+			if ((arrayWidth == 0) || (arrayHeight == 0))
 				throw new ArgumentException("zero element arrays are not supported");
+
+			if (window.HasValue)
+			{
+				if ((window.Value.Left < 0) || (window.Value.Top < 0) || (window.Value.Right > arrayWidth) || (window.Value.Bottom > arrayHeight))
+					throw new ArgumentOutOfRangeException(nameof(window));
+				Width = window.Value.Width;
+				Height = window.Value.Height;
+				_window = window.Value;
+			}
+			else
+			{
+				Width = arrayWidth;
+				Height = arrayHeight;
+				_window = new Rectangle(0, 0, arrayWidth, arrayHeight);
+			}
 
 			if (isolationCopyMayBeBypassed)
 				_protectedValues = values;
@@ -59,19 +72,19 @@ namespace Common
 					throw new ArgumentOutOfRangeException(nameof(x));
 				if ((y < 0) || (y >= Height))
 					throw new ArgumentOutOfRangeException(nameof(y));
-				return _protectedValues[x, y];
+				return _protectedValues[x + _window.Left, y + _window.Top];
 			}
 		}
 
-		public IEnumerable<Tuple<Point, T>> Enumerate(Func<T, Point, bool> optionalFilter = null)
+		public IEnumerable<Tuple<Point, T>> Enumerate(Func<Point, T, bool> optionalFilter = null)
 		{
-			for (var x = 0; x < Width; x++)
+			for (var x = _window.Left; x < _window.Right; x++)
 			{
-				for (var y = 0; y < Height; y++)
+				for (var y = _window.Top; y < _window.Bottom; y++)
 				{
 					var value = _protectedValues[x, y];
 					var point = new Point(x, y);
-					if ((optionalFilter == null) || optionalFilter(value, point))
+					if ((optionalFilter == null) || optionalFilter(point, value))
 						yield return Tuple.Create(point, value);
 				}
 			}
@@ -86,9 +99,9 @@ namespace Common
 			if (filter == null)
 				throw new ArgumentNullException(nameof(filter));
 
-			for (var x = area.Left; x < area.Right; x++)
+			for (var x = _window.Left; x < _window.Right; x++)
 			{
-				for (var y = area.Top; y < area.Bottom; y++)
+				for (var y = _window.Top; y < _window.Bottom; y++)
 				{
 					if (filter(_protectedValues[x, y]))
 						return true;
@@ -111,12 +124,12 @@ namespace Common
 				throw new ArgumentNullException(nameof(transformer));
 
 			var transformed = new TResult[Width, Height];
-			for (var x = 0; x < Width; x++)
+			for (var x = _window.Left; x < _window.Right; x++)
 			{
-				for (var y = 0; y < Height; y++)
+				for (var y = _window.Top; y < _window.Bottom; y++)
 					transformed[x, y] = transformer(_protectedValues[x, y], new Point(x, y));
 			}
-			return new DataRectangle<TResult>(transformed, isolationCopyMayBeBypassed: true);
+			return new DataRectangle<TResult>(transformed, window: null, isolationCopyMayBeBypassed: true);
 		}
 
 		public DataRectangle<TResult> CombineWith<TOther, TResult>(DataRectangle<TOther> other, Func<T, TOther, TResult> combiner)
@@ -139,12 +152,31 @@ namespace Common
 				throw new ArgumentNullException(nameof(combiner));
 
 			var result = new TResult[Width, Height];
-			for (var x = 0; x < Width; x++)
+			for (var x = _window.Left; x < _window.Right; x++)
 			{
-				for (var y = 0; y < Height; y++)
+				for (var y = _window.Top; y < _window.Bottom; y++)
 					result[x, y] = combiner(_protectedValues[x, y], other[x, y], new Point(x, y));
 			}
-			return new DataRectangle<TResult>(result, isolationCopyMayBeBypassed: true);
+			return new DataRectangle<TResult>(result, window: null, isolationCopyMayBeBypassed: true);
+		}
+
+		public DataRectangle<T> Slice(Rectangle bounds)
+		{
+			if ((bounds.Left < 0) || (bounds.Right > Width) || (bounds.Top < 0) || (bounds.Bottom > Height))
+				throw new ArgumentOutOfRangeException(nameof(bounds));
+			if ((bounds.Width <= 0) || (bounds.Height <= 0))
+				throw new ArgumentException("zero element arrays are not supported", nameof(bounds));
+
+			return new DataRectangle<T>(
+				_protectedValues,
+				window: new Rectangle(
+					_window.X + bounds.X,
+					_window.Y + bounds.Y,
+					bounds.Width,
+					bounds.Height
+				),
+				isolationCopyMayBeBypassed: true
+			);
 		}
 	}
 }
