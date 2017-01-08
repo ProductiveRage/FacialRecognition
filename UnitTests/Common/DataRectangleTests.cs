@@ -157,6 +157,119 @@ namespace UnitTests.Common
 		}
 
 		[Fact]
+		public void Block4x4Into2x2()
+		{
+			var data = DataRectangle.For(Rotate(new[,]
+			{
+				{ 1, 1, 2, 2 },
+				{ 1, 1, 2, 2 },
+				{ 3, 3, 4, 4 },
+				{ 3, 3, 4, 4 }
+			}));
+			var result = data.BlockOut(
+				blockSize: 2,
+				reducer: blockData =>
+				{
+					var valuesInBlock = blockData.Enumerate().Select(pointAndValue => pointAndValue.Item2);
+					if (valuesInBlock.Distinct().Count() > 1)
+						throw new Exception("All of the values in each block should be consistent based upon the test data");
+					return valuesInBlock.First();
+				}
+			);
+			var expected = DataRectangle.For(Rotate(new[,]
+			{
+				{ 1, 2 },
+				{ 3, 4 }
+			}));
+			Assert.Equal(expected, result, DataRectangleTestsEqualityComparer<int>.Default);
+		}
+
+		[Fact]
+		public void Block4x4Into4x4()
+		{
+			var data = DataRectangle.For(Rotate(new[,]
+			{
+				{ 1, 1, 2, 2 },
+				{ 1, 1, 2, 2 },
+				{ 3, 3, 4, 4 },
+				{ 3, 3, 4, 4 }
+			}));
+			var result = data.BlockOut(
+				blockSize: 1,
+				reducer: blockData =>
+				{
+					var valuesInBlock = blockData.Enumerate().Select(pointAndValue => pointAndValue.Item2);
+					if (valuesInBlock.Count() != 1)
+						throw new Exception("Expect precisely one value per block");
+					return valuesInBlock.First();
+				}
+			);
+			var expected = data;
+			Assert.Equal(expected, result, DataRectangleTestsEqualityComparer<int>.Default);
+		}
+
+		/// <summary>
+		/// Splitting 3x3 into 2x2 won't go perfectly, there should be one clear 2x2 block and then three 1x1 blocks around it
+		/// </summary>
+		[Fact]
+		public void Block3x3Into2x2()
+		{
+			var data = DataRectangle.For(Rotate(new[,]
+			{
+				{ 1, 1, 2 },
+				{ 1, 1, 2 },
+				{ 3, 3, 4 }
+			}));
+			var result = data.BlockOut(
+				blockSize: 2,
+				reducer: blockData =>
+				{
+					var valuesInBlock = blockData.Enumerate().Select(pointAndValue => pointAndValue.Item2);
+					if (valuesInBlock.Distinct().Count() > 1)
+						throw new Exception("All of the values in each block should be consistent based upon the test data");
+					return valuesInBlock.First();
+				}
+			);
+			var expected = DataRectangle.For(Rotate(new[,]
+			{
+				{ 1, 2 },
+				{ 3, 4 }
+			}));
+			Assert.Equal(expected, result, DataRectangleTestsEqualityComparer<int>.Default);
+		}
+
+		/// <summary>
+		/// Splitting 5x5 into 4x4 won't go perfectly, there should be one clear 4x4 block and then the rest of the content is too small to block up
+		/// </summary>
+		[Fact]
+		public void Block5x5Into4x4()
+		{
+			var data = DataRectangle.For(Rotate(new[,]
+			{
+				{ 1, 1, 1, 1, 2 },
+				{ 1, 1, 1, 1, 2 },
+				{ 1, 1, 1, 1, 2 },
+				{ 1, 1, 1, 1, 2 },
+				{ 3, 3, 3, 3, 4 }
+			}));
+			var result = data.BlockOut(
+				blockSize: 4,
+				reducer: blockData =>
+				{
+					var valuesInBlock = blockData.Enumerate().Select(pointAndValue => pointAndValue.Item2);
+					if (valuesInBlock.Distinct().Count() > 1)
+						throw new Exception("All of the values in each block should be consistent based upon the test data");
+					return valuesInBlock.First();
+				}
+			);
+			var expected = DataRectangle.For(Rotate(new[,]
+			{
+				{ 1 }
+			}));
+			Assert.Equal(expected, result, DataRectangleTestsEqualityComparer<int>.Default);
+		}
+
+		[Fact]
 		public void AnyValuesMatchFor2x2AreaWithin6x4()
 		{
 			var data = DataRectangle.For(Rotate(new[,]

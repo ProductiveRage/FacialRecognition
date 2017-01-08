@@ -182,5 +182,36 @@ namespace Common
 				isolationCopyMayBeBypassed: true
 			);
 		}
+
+		public DataRectangle<TResult> BlockOut<TResult>(int blockSize, Func<DataRectangle<T>, TResult> reducer)
+		{
+			if (blockSize <= 0)
+				throw new ArgumentOutOfRangeException(nameof(blockSize), "must be greater than zero");
+			if ((blockSize > Width) || (blockSize > Height))
+				throw new ArgumentOutOfRangeException(nameof(blockSize), "must not be larger than either Width nor Height");
+			if (reducer == null)
+				throw new ArgumentNullException(nameof(reducer));
+
+			var newWidth = (int)Math.Round((double)Width / blockSize);
+			var newHeight = (int)Math.Round((double)Width / blockSize);
+			var result = new TResult[newWidth, newHeight];
+			for (var x = 0; x < newWidth; x++)
+			{
+				for (var y = 0; y < newHeight; y++)
+				{
+					var left = x * blockSize;
+					var top = y * blockSize;
+					result[x, y] = reducer(Slice(
+						Rectangle.FromLTRB(
+							left: left,
+							top: top,
+							right: Math.Min(left + blockSize, Width),
+							bottom: Math.Min(top + blockSize, Height)
+						)
+					));
+				}
+			}
+			return DataRectangle.For(result);
+		}
 	}
 }
