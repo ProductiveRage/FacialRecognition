@@ -57,12 +57,18 @@
   <ItemGroup>
     <Compile Include="Common\DataRectangleTestsEqualityComparer.cs" />
     <Compile Include="Common\DataRectangleTests.cs" />
+    <Compile Include="DoubleExtensions.cs" />
+    <Compile Include="FaceClassifier\HistogramOfGradientGeneratorTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.csproj">
       <Project>{958e4934-a071-416a-8848-2fa8aca9d484}</Project>
       <Name>Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\FaceClassifier\FaceClassifier.csproj">
+      <Project>{C5BA30CB-2B5A-41C6-B4CF-15DD85D80E30}</Project>
+      <Name>FaceClassifier</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

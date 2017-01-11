@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{7DE06A16-AF49-46B3-8659-7F1C4BF1E3B2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FaceClassifier", "FaceClassifier\FaceClassifier.csproj", "{C5BA30CB-2B5A-41C6-B4CF-15DD85D80E30}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{7DE06A16-AF49-46B3-8659-7F1C4BF1E3B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7DE06A16-AF49-46B3-8659-7F1C4BF1E3B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7DE06A16-AF49-46B3-8659-7F1C4BF1E3B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5BA30CB-2B5A-41C6-B4CF-15DD85D80E30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5BA30CB-2B5A-41C6-B4CF-15DD85D80E30}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5BA30CB-2B5A-41C6-B4CF-15DD85D80E30}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5BA30CB-2B5A-41C6-B4CF-15DD85D80E30}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
