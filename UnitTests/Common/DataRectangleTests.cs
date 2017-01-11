@@ -302,7 +302,7 @@ namespace UnitTests.Common
 		/// it the array is changed to the form that I think makes more sense (the Slice6x5Into3x3WithOffset1x1ThenInto2x1With1x1Offset test method is a good
 		/// demonstration of this in practice).
 		/// </summary>
-		private static T[,] Rotate<T>(T[,] data)
+		public static T[,] Rotate<T>(T[,] data)
 		{
 			if (data == null)
 				throw new ArgumentNullException(nameof(data));

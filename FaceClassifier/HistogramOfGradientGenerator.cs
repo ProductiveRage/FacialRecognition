@@ -12,12 +12,12 @@ namespace FaceClassifier
 				throw new ArgumentNullException(nameof(source));
 
 			return Get(
-				source.Transform(colour => (byte)Math.Round(colour.ToGreyScale())),
+				source.Transform(colour => Math.Round(colour.ToGreyScale())),
 				blockSize
 			);
 		}
 
-		public static DataRectangle<HistogramOfGradient> Get(DataRectangle<byte> source, int blockSize)
+		public static DataRectangle<HistogramOfGradient> Get(DataRectangle<double> source, int blockSize)
 		{
 			if (source == null)
 				throw new ArgumentNullException(nameof(source));
