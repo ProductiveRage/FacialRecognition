@@ -36,6 +36,7 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DataRectangleOfHistogramOfGradientExtensions.cs" />
     <Compile Include="HistogramOfGradient.cs" />
     <Compile Include="HistogramOfGradientGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

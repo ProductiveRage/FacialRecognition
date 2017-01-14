@@ -69,6 +69,34 @@ namespace FaceClassifier
 			);
 		}
 
+		public HistogramOfGradient Rotate90Degrees()
+		{
+			// To rotate the histogram by ninety degrees, each bin needs to be split over two others since the bins are 20 degrees apart and so 90 degrees isn't a simple case
+			// of shuffling values round a few notches. For example, the Degrees10 value needs to be rotated to represent 10+90 = 100 degrees, which falls precisely in the
+			// middle Degrees90 and Degrees110. Similarly, Degrees30's weight needs to be split between Degrees110 and Degrees130 in the rotate image.
+			//
+			//    10  -> 100 =>  90 / 110 split
+			//    30  -> 120 => 110 / 130 split
+			//    50  -> 140 => 130 / 150 split
+			//    70  -> 160 => 150 / 170 split
+			//    90  -> 180 => 170 / 10  split
+			//   110  ->  20 =>  10 / 30  split
+			//   130  ->  40 =>  30 / 50  split
+			//   150  ->  60 =>  50 / 70  split
+			//   170  ->  80 =>  70 / 90  split
+			return new HistogramOfGradient(
+				degrees10:  (Degrees90  / 2) + (Degrees110 / 2),
+				degrees30:  (Degrees110 / 2) + (Degrees130 / 2),
+				degrees50:  (Degrees130 / 2) + (Degrees150 / 2),
+				degrees70:  (Degrees150 / 2) + (Degrees170 / 2),
+				degrees90:  (Degrees170 / 2) +  (Degrees10 / 2),
+				degrees110: (Degrees10  / 2) + (Degrees30  / 2),
+				degrees130: (Degrees30  / 2) + (Degrees50  / 2),
+				degrees150: (Degrees50  / 2) + (Degrees70  / 2),
+				degrees170: (Degrees70  / 2) + (Degrees90  / 2)
+			);
+		}
+
 		/// <summary>
 		/// This will return a HistogramOfGradient where the magnitudes sum to one (while maintaining the ratios of the curent instance)
 		/// </summary>
