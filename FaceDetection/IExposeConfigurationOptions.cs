@@ -9,6 +9,8 @@ namespace FaceDetection
 		int TextureAmplitudeFirstPassSmoothenMultiplier { get; }
 		int TextureAmplitudeSecondPassSmoothenMultiplier { get; }
 
+		int CalculateScale(int width, int height); // TODO: Rename? At least document..
+
 		DataRectangle<IRgBy> IRgByCalculator(DataRectangle<RGB> values);
 		int RgBySmoothenMultiplier { get; }
 

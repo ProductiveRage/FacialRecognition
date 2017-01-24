@@ -2,10 +2,8 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
-using Common;
-using FaceDetection;
 
-namespace Tester
+namespace Common
 {
 	public static class BitmapExtensions
 	{
@@ -115,6 +113,56 @@ namespace Tester
 			finally
 			{
 				image.UnlockBits(data);
+			}
+		}
+
+		public static Bitmap ExtractImageSectionAndResize(this Bitmap source, Rectangle region, Size destinationSize)
+		{
+			if (source == null)
+				throw new ArgumentNullException(nameof(source));
+			if ((region.Left < 0) || (region.Top < 0) || (region.Right > source.Width) || (region.Bottom > source.Height))
+				throw new ArgumentOutOfRangeException(nameof(destinationSize));
+			if ((destinationSize.Width <= 0) || (destinationSize.Height <= 0))
+				throw new ArgumentOutOfRangeException(nameof(destinationSize));
+
+			using (var specifiedArea = new Bitmap(region.Width, region.Height))
+			{
+				using (var g = Graphics.FromImage(specifiedArea))
+				{
+					g.DrawImage(
+						source,
+						destRect: new RectangleF(0, 0, region.Width, region.Height),
+						srcRect: new RectangleF(region.X, region.Y, region.Width, region.Height),
+						srcUnit: GraphicsUnit.Pixel
+					);
+				}
+
+				var aspectRatio = (double)region.Width / region.Height;
+				var sampleAspectRatio = (double)destinationSize.Width / destinationSize.Height;
+				var resizeRatio = (aspectRatio >= sampleAspectRatio) ? ((double)destinationSize.Width / region.Width) : ((double)destinationSize.Height / region.Height);
+				var newDimensions = new Size((int)Math.Round(region.Width * resizeRatio), (int)Math.Round(region.Height * resizeRatio));
+				var offsetX = (destinationSize.Width - newDimensions.Width) / 2;
+				var offsetY = (destinationSize.Height - newDimensions.Height) / 2;
+
+				using (var specifiedAreaResized = new Bitmap(specifiedArea, newDimensions.Width, newDimensions.Height))
+				{
+					var specifiedAreaResizedAndCentred = new Bitmap(destinationSize.Width, destinationSize.Height);
+					try
+					{
+						using (var g = Graphics.FromImage(specifiedAreaResizedAndCentred))
+						{
+							using (var background = new SolidBrush(Color.Black))
+								g.FillRectangle(background, new Rectangle(0, 0, specifiedAreaResizedAndCentred.Width, specifiedAreaResizedAndCentred.Height));
+							g.DrawImage(specifiedAreaResized, new PointF(offsetX, offsetY));
+						}
+						return specifiedAreaResizedAndCentred;
+					}
+					catch
+					{
+						specifiedAreaResizedAndCentred.Dispose();
+						throw;
+					}
+				}
 			}
 		}
 	}

@@ -27,7 +27,7 @@ namespace FaceDetection
 			if (source == null)
 				throw new ArgumentNullException(nameof(source));
 
-			var scale = CalculateScale(source.Width, source.Height);
+			var scale = _config.CalculateScale(source.Width, source.Height);
 			_logger($"Loaded file - Dimensions: {source.Width}x{source.Height}, Scale: {scale}");
 
 			var colourData = CorrectZeroResponse(source);
@@ -63,6 +63,14 @@ namespace FaceDetection
 			var skinMask = smoothedHues.Transform(transformer: _config.SkinFilter);
 			_logger("Built initial skin mask");
 
+			using (var skinMaskPreviewImage = new Bitmap(skinMask.Width, skinMask.Height))
+			{
+				skinMaskPreviewImage.SetRGB(
+					skinMask.Transform(isSkin => isSkin ? new RGB(255, 255, 255) : new RGB(0, 0, 0))
+				);
+				skinMaskPreviewImage.Save("SkinMask1.png");
+			}
+			
 			// Now expand the mask to include any adjacent points that match a less strict filter (which "helps to enlarge the skin map regions to include skin/background
 			// border pixels, regions near hair or other features, or desaturated areas" - as per Jay Kapur, though he recommends five iterations and I think that a slightly
 			// higher value may provide better results)
@@ -98,7 +106,17 @@ namespace FaceDetection
 			);
 			_logger("Completed final skin mask");
 
-			var faceRegions = _config.FaceRegionAspectRatioFilter(IdentifyFacesFromSkinMask(skinMask))
+			using (var skinMaskPreviewImage = new Bitmap(skinMask.Width, skinMask.Height))
+			{
+				skinMaskPreviewImage.SetRGB(
+					skinMask.Transform(isSkin => isSkin ? new RGB(255, 255, 255) : new RGB(0, 0, 0))
+				);
+				skinMaskPreviewImage.Save("SkinMask2.png");
+			}
+
+			var faceRegions = _config.FaceRegionAspectRatioFilter(
+					IdentifyFacesFromSkinMask(skinMask)
+				)
 				.Select(faceRegion => ExpandRectangle(faceRegion, _config.PercentToExpandFinalFaceRegionBy, new Size(source.Width, source.Height)))
 				.ToArray();
 			_logger("Identified face regions");
@@ -119,7 +137,7 @@ namespace FaceDetection
 			return area;
 		}
 
-		private static IEnumerable<Rectangle> IdentifyFacesFromSkinMask(DataRectangle<bool> skinMask)
+		private IEnumerable<Rectangle> IdentifyFacesFromSkinMask(DataRectangle<bool> skinMask)
 		{
 			if (skinMask == null)
 				throw new ArgumentNullException(nameof(skinMask));
@@ -129,7 +147,7 @@ namespace FaceDetection
 			var skinPoints = new HashSet<Point>(
 				skinMask.Enumerate((point, isMasked) => isMasked).Select(point => point.Item1)
 			);
-			var scale = CalculateScale(skinMask.Width, skinMask.Height);
+			var scale = _config.CalculateScale(skinMask.Width, skinMask.Height);
 			var skinObjects = new List<Point[]>();
 			while (skinPoints.Any())
 			{
@@ -140,6 +158,27 @@ namespace FaceDetection
 				skinObjects.Add(pointsInObject);
 			}
 			skinObjects = skinObjects.Where(skinObject => skinObject.Length >= (64 * scale)).ToList(); // Ignore any very small regions
+
+
+			using (var skinMaskPreviewImage = new Bitmap(skinMask.Width, skinMask.Height))
+			{
+				Func<Color, RGB> colourToRgb = c => new RGB(c.R, c.G, c.B);
+				var colours = new[]
+				{
+					Color.Red, Color.Gray, Color.Green, Color.Blue, Color.DarkBlue, Color.Yellow, Color.White, Color.Turquoise, Color.Teal, Color.Thistle, Color.SpringGreen, Color.YellowGreen, Color.MintCream, Color.MistyRose,
+					Color.Red, Color.Gray, Color.Green, Color.Blue, Color.DarkBlue, Color.Yellow, Color.White, Color.Turquoise, Color.Teal, Color.Thistle, Color.SpringGreen, Color.YellowGreen, Color.MintCream, Color.MistyRose
+				};
+
+				var allSkinObjectPoints = skinObjects.Select((o, i) => new { Points = new HashSet<Point>(o), Colour = colours[i] }).ToArray();
+				skinMaskPreviewImage.SetRGB(
+					skinMask.Transform((isSkin, point) =>
+					{
+						var firstObject = allSkinObjectPoints.FirstOrDefault(o => o.Points.Contains(point));
+						return (firstObject == null) ? new RGB(0, 0, 0) : colourToRgb(firstObject.Colour);
+					})
+				);
+				skinMaskPreviewImage.Save("SkinMask3.png");
+			}
 
 			// Look for any fully enclosed holes in each skin object (do this by flood filling from negative points and ignoring any where the fill gets to the edges of object)
 			foreach (var skinObject in skinObjects)
@@ -203,15 +242,6 @@ namespace FaceDetection
 			return filledPixels;
 		}
 
-		private static int CalculateScale(int width, int height)
-		{
-			if (width <= 0)
-				throw new ArgumentOutOfRangeException(nameof(width));
-			if (height <= 0)
-				throw new ArgumentOutOfRangeException(nameof(height));
-
-			return (int)Math.Round((double)(width + height) / 320);
-		}
 
 		private static double RadianToDegree(double angle)
 		{

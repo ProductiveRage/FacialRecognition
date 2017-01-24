@@ -127,11 +127,12 @@ namespace Common
 			if (transformer == null)
 				throw new ArgumentNullException(nameof(transformer));
 
+			// TODO: Need a test around this - where Slice is called and then Transform
 			var transformed = new TResult[Width, Height];
-			for (var x = _window.Left; x < _window.Right; x++)
+			for (var x = 0; x < Width; x++)
 			{
-				for (var y = _window.Top; y < _window.Bottom; y++)
-					transformed[x, y] = transformer(_protectedValues[x, y], new Point(x, y));
+				for (var y = 0; y < Height; y++)
+					transformed[x, y] = transformer(_protectedValues[_window.Left + x, _window.Top + y], new Point(x, y));
 			}
 			return new DataRectangle<TResult>(transformed, window: null, isolationCopyMayBeBypassed: true);
 		}
@@ -192,8 +193,10 @@ namespace Common
 			if (reducer == null)
 				throw new ArgumentNullException(nameof(reducer));
 
+			// Use Math.Round so that if the source doesn't fit precisely into the required block size then it ignores the overflow if there isn't much of
+			// and includes it in additional blocks if there IS quite a lot
 			var newWidth = (int)Math.Round((double)Width / blockSize);
-			var newHeight = (int)Math.Round((double)Width / blockSize);
+			var newHeight = (int)Math.Round((double)Height / blockSize);
 			var result = new TResult[newWidth, newHeight];
 			for (var x = 0; x < newWidth; x++)
 			{
@@ -211,7 +214,7 @@ namespace Common
 					));
 				}
 			}
-			return DataRectangle.For(result);
+			return new DataRectangle<TResult>(result, window: null, isolationCopyMayBeBypassed: true);
 		}
 	}
 }
