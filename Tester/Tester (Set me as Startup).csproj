@@ -39,8 +39,6 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BitmapExtensions.cs" />
-    <Compile Include="PGMReader.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="IntervalTimer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
