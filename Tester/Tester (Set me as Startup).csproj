@@ -12,6 +12,8 @@
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -50,6 +52,10 @@
     <ProjectReference Include="..\Common\Common.csproj">
       <Project>{958e4934-a071-416a-8848-2fa8aca9d484}</Project>
       <Name>Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\FaceClassifier\FaceClassifier.csproj">
+      <Project>{C5BA30CB-2B5A-41C6-B4CF-15DD85D80E30}</Project>
+      <Name>FaceClassifier</Name>
     </ProjectReference>
     <ProjectReference Include="..\FaceDetection\FaceDetection.csproj">
       <Project>{c2e63f70-29a1-47a5-a1fc-953f5541965f}</Project>
