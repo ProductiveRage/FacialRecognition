@@ -9,6 +9,12 @@ namespace FaceDetection
 		int TextureAmplitudeFirstPassSmoothenMultiplier { get; }
 		int TextureAmplitudeSecondPassSmoothenMultiplier { get; }
 
+		/// <summary>
+		/// When smoothening colour and texture amplitude data, the magnitude of smoothening depends upon the size of the source image - large images will need more smoothening
+		/// to get the same effect as less processing applied to small images
+		/// </summary>
+		int CalculateScale(int width, int height);
+
 		DataRectangle<IRgBy> IRgByCalculator(DataRectangle<RGB> values);
 		int RgBySmoothenMultiplier { get; }
 
