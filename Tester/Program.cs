@@ -54,8 +54,14 @@ namespace Tester
 					var newFilePath = Path.Combine(detectedFace.File.Directory.FullName, (detectedFace.IsFace ? "FACE-" : "NEG-") + detectedFace.File.Name);
 					detectedFace.File.CopyTo(newFilePath);
 					detectedFace.File.Delete();
-					return new FileInfo(newFilePath);
+					return new
+					{
+						File = new FileInfo(newFilePath),
+						IsFace = detectedFace.IsFace
+					};
 				})
+				.Where(detectedFace => detectedFace.IsFace)
+				.Select(detectedFace => detectedFace.File)
 				.ToArray();
 
 			Console.WriteLine();
