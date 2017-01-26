@@ -117,17 +117,6 @@ namespace FaceDetection
 			var faceRegions = _config.FaceRegionAspectRatioFilter(
 					IdentifyFacesFromSkinMask(skinMask)
 				)
-				.Where(faceRegion =>
-				{
-					/*
-					// TODO: Remove all this (?)
-					var faceRegionArea = faceRegion.Width * faceRegion.Height;
-					var percentageMatchesSkinFiler = (double)smoothedHues.Slice(faceRegion).Enumerate((point, colour) => _config.SkinFilter(colour)).Count() / faceRegionArea;
-					var percentageMatchesRelaxedSkinFiler = (double)smoothedHues.Slice(faceRegion).Enumerate((point, colour) => _config.RelaxedSkinFilter(colour)).Count() / faceRegionArea;
-					Console.WriteLine("Percentages matching skin filter: " + percentageMatchesSkinFiler.ToString("0.00") + " " + percentageMatchesRelaxedSkinFiler.ToString("0.00"));
-					*/
-					return true; // TODO (percentageMatchesSkinFiler > 0.5); // TODO: Works??
-				})
 				.Select(faceRegion => ExpandRectangle(faceRegion, _config.PercentToExpandFinalFaceRegionBy, new Size(source.Width, source.Height)))
 				.ToArray();
 			_logger("Identified face regions");
