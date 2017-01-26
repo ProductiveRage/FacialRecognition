@@ -21,6 +21,9 @@ namespace Tester
 			if (!caltechWebFacesSourceImageFolder.Exists)
 				throw new Exception("The \"WebFaces_GroundThruth.txt\" file must exist in the CaltechWebFaces folder, it may be downloaded from http://www.vision.caltech.edu/Image_Datasets/Caltech_10K_WebFaces/");
 
+			var skinToneSearchApproachOutputFolder = new DirectoryInfo("Results");
+			EmptyAndDeleteFolder(skinToneSearchApproachOutputFolder);
+
 			const int sampleWidth = 128;
 			const int sampleHeight = sampleWidth;
 			const int blockSize = 8;
@@ -28,28 +31,22 @@ namespace Tester
 			const int minimumNumberOfImagesToTrainWith = 2000;
 
 			var faceClassifier = CalTechWebFacesSvmTrainer.TrainFromCaltechData(caltechWebFacesSourceImageFolder, groundTruthTextFile, sampleWidth, sampleHeight, blockSize, minimumNumberOfImagesToTrainWith, normaliser);
-
-			var skinToneSearchApproachOutputFolder = new DirectoryInfo("Results");
-			EmptyAndDeleteFolder(skinToneSearchApproachOutputFolder);
 			var skinToneResults = new[]
 				{
 					"TigerWoods.gif"
 				}
 				.SelectMany(filePath => ExtractPossibleFaceRegionsFromImage(new FileInfo(filePath), skinToneSearchApproachOutputFolder, sizeToSaveExtractedContentAs: new Size(sampleWidth, sampleHeight)))
+				.ToArray();
+			var finalResults = skinToneResults
 				.Select(faceRegionFile =>
 				{
 					using (var source = new Bitmap(faceRegionFile.FullName))
 					{
-						using (var windowedImageForFeatureExtraction = source.ExtractImageSectionAndResize(new Rectangle(new Point(0, 0), source.Size), new Size(sampleWidth, sampleHeight)))
+						return new
 						{
-							var features = FeatureExtractor.GetFor(windowedImageForFeatureExtraction, blockSize, optionalHogPreviewImagePath: null, normaliser: normaliser).ToArray();
-							return new
-							{
-								File = faceRegionFile,
-								IsFace = faceClassifier.IsFace(features),
-								Features = features
-							};
-						}
+							File = faceRegionFile,
+							IsFace = faceClassifier.IsFace(source),
+						};
 					}
 				})
 				.Select(detectedFace =>
@@ -57,13 +54,17 @@ namespace Tester
 					var newFilePath = Path.Combine(detectedFace.File.Directory.FullName, (detectedFace.IsFace ? "FACE-" : "NEG-") + detectedFace.File.Name);
 					detectedFace.File.CopyTo(newFilePath);
 					detectedFace.File.Delete();
-					return new
-					{
-						File = new FileInfo(newFilePath),
-						Features = detectedFace.Features
-					};
+					return new FileInfo(newFilePath);
 				})
 				.ToArray();
+
+			Console.WriteLine();
+			Console.WriteLine($"Identified {skinToneResults.Length} possible face region(s) in the skin tone filter pass");
+			Console.WriteLine($"{finalResults.Length} of these was determined to be a face by the SVM filter");
+			Console.WriteLine("The extracted regions may be seen in the " + skinToneSearchApproachOutputFolder.Name + " folder");
+			Console.WriteLine("Press [Enter] to terminate..");
+			Console.WriteLine();
+			Console.ReadLine();
 		}
 
 		private static IEnumerable<FileInfo> ExtractPossibleFaceRegionsFromImage(FileInfo file, DirectoryInfo saveRegionsTo, Size sizeToSaveExtractedContentAs)

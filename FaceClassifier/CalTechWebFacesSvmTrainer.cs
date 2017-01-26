@@ -102,7 +102,7 @@ namespace FaceClassifier
 			Console.WriteLine("Time to test SVM against training data: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
 			timer.Restart();
 
-			return new SvmClassifier(svm);
+			return new SvmClassifier(svm, sampleWidth, sampleHeight, blockSize, normaliser);
 		}
 
 		private static IEnumerable<IEnumerable<Tuple<Bitmap, bool>>> ExtractPositiveAndNegativeTrainingDataFromCaltechWebFaces(
@@ -265,20 +265,39 @@ namespace FaceClassifier
 		private sealed class SvmClassifier : IClassifyPotentialFaces
 		{
 			private readonly SupportVectorMachine<Linear> _svm;
-			public SvmClassifier(SupportVectorMachine<Linear> svm)
+			private readonly int _sampleWidth, _sampleHeight, _blockSize;
+			private readonly Normaliser _normaliser;
+			public SvmClassifier(SupportVectorMachine<Linear> svm, int sampleWidth, int sampleHeight, int blockSize, Normaliser normaliser)
 			{
 				if (svm == null)
 					throw new ArgumentNullException(nameof(svm));
+				if (sampleWidth <= 0)
+					throw new ArgumentOutOfRangeException(nameof(sampleWidth));
+				if (sampleHeight <= 0)
+					throw new ArgumentOutOfRangeException(nameof(sampleHeight));
+				if (blockSize <= 0)
+					throw new ArgumentOutOfRangeException(nameof(blockSize));
+				if (normaliser == null)
+					throw new ArgumentNullException(nameof(normaliser));
 
 				_svm = svm;
+				_sampleWidth = sampleWidth;
+				_sampleHeight = sampleHeight;
+				_blockSize = blockSize;
+				_normaliser = normaliser;
 			}
 
-			public bool IsFace(double[] features)
+			public bool IsFace(Bitmap image)
 			{
-				if (features == null)
-					throw new ArgumentNullException(nameof(features));
+				if (image == null)
+					throw new ArgumentNullException(nameof(image));
 
-				return _svm.Decide(features);
+				using (var windowedImageForFeatureExtraction = image.ExtractImageSectionAndResize(new Rectangle(new Point(0, 0), image.Size), new Size(_sampleWidth, _sampleHeight)))
+				{
+					return _svm.Decide(
+						FeatureExtractor.GetFor(windowedImageForFeatureExtraction, _blockSize, optionalHogPreviewImagePath: null, normaliser: _normaliser).ToArray()
+					);
+				}
 			}
 		}
 	}
