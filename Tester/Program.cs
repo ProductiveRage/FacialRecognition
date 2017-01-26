@@ -62,8 +62,8 @@ namespace Tester
 			Console.WriteLine($"Identified {skinToneResults.Length} possible face region(s) in the skin tone filter pass");
 			Console.WriteLine($"{finalResults.Length} of these was determined to be a face by the SVM filter");
 			Console.WriteLine("The extracted regions may be seen in the " + skinToneSearchApproachOutputFolder.Name + " folder");
-			Console.WriteLine("Press [Enter] to terminate..");
 			Console.WriteLine();
+			Console.WriteLine("Press [Enter] to terminate..");
 			Console.ReadLine();
 		}
 
