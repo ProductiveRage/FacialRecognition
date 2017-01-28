@@ -21,9 +21,9 @@ namespace Tester
 			if (!caltechWebFacesSourceImageFolder.Exists)
 				throw new Exception("The \"WebFaces_GroundThruth.txt\" file must exist in the CaltechWebFaces folder, it may be downloaded from http://www.vision.caltech.edu/Image_Datasets/Caltech_10K_WebFaces/");
 
-			var skinToneSearchApproachOutputFolder = new DirectoryInfo("Results");
-			EmptyAndDeleteFolder(skinToneSearchApproachOutputFolder);
-			skinToneSearchApproachOutputFolder.Create();
+			var faceDetectionResultsFolder = new DirectoryInfo("Results");
+			EmptyAndDeleteFolder(faceDetectionResultsFolder);
+			faceDetectionResultsFolder.Create();
 
 			const int sampleWidth = 128;
 			const int sampleHeight = sampleWidth;
@@ -53,36 +53,62 @@ namespace Tester
 							RegionInSource = possibleFaceImage.RegionInSource,
 							IsFace = faceClassifier.IsFace(possibleFaceImage.ExtractedImage)
 						})
-						.ToArray() // Call ToArray to prevent repeated evaluation (in loop below and in the summary message further down)
 				})
-				.ToArray(); // Call ToArray to prevent repeated evaluation (in loop below and in the summary message further down)
-			foreach (var file in possibleFaceRegionsInImages)
-			{
-				var faceIndex = 0;
-				var negativeIndex = 0;
-				foreach (var possibleFaceRegion in file.PossibleFaceImages)
+				.Select((fileAndPossibleFaceRegions, index) =>
 				{
-					string filename;
-					if (possibleFaceRegion.IsFace)
+					// This will save the positive and negative matches into individual files in faceDetectionResultsFolder
+					var possibleFaceRegions = fileAndPossibleFaceRegions.PossibleFaceImages.ToArray(); // Prevent repeated evaluation below
+					var faceIndex = 0;
+					var negativeIndex = 0;
+					foreach (var possibleFaceRegion in possibleFaceRegions)
 					{
-						filename = "FACE" + faceIndex;
-						faceIndex++;
+						string filename;
+						if (possibleFaceRegion.IsFace)
+						{
+							filename = "FACE_" + index + "_" + faceIndex;
+							faceIndex++;
+						}
+						else
+						{
+							filename = "NEG_" + index + "_" + negativeIndex;
+							negativeIndex++;
+						}
+						filename += "-" + fileAndPossibleFaceRegions.File.Name + ".png";
+						possibleFaceRegion.Image.Save(Path.Combine(faceDetectionResultsFolder.FullName, filename));
+						possibleFaceRegion.Image.Dispose();
 					}
-					else
+					return new
 					{
-						filename = "NEG" + negativeIndex;
-						negativeIndex++;
+						File = fileAndPossibleFaceRegions.File,
+						PossibleFaceImages = fileAndPossibleFaceRegions.PossibleFaceImages
+							.Select(possibleFaceImage => new
+							{
+								RegionInSource = possibleFaceImage.RegionInSource,
+								IsFace = possibleFaceImage.IsFace
+							})
+
+					};
+				})
+				.Select(fileAndPossibleFaceRegions =>
+				{
+					// This will save a copy of the original image to the faceDetectionResultsFolder with the detected faces outlined
+					using (var source = new Bitmap(fileAndPossibleFaceRegions.File.FullName))
+					{
+						WriteOutputFile(
+							Path.Combine(faceDetectionResultsFolder.FullName, fileAndPossibleFaceRegions.File.Name) + ".png",
+							source,
+							fileAndPossibleFaceRegions.PossibleFaceImages.Where(possibleFaceRegion => possibleFaceRegion.IsFace).Select(possibleFaceRegion => possibleFaceRegion.RegionInSource),
+							Color.GreenYellow
+						);
 					}
-					filename += "-" + file.File.Name + ".png";
-					possibleFaceRegion.Image.Save(Path.Combine(skinToneSearchApproachOutputFolder.FullName, filename));
-					possibleFaceRegion.Image.Dispose();
-				}
-			}
+					return fileAndPossibleFaceRegions;
+				})
+				.ToArray(); // Evaluate the above work
 
 			Console.WriteLine();
 			Console.WriteLine($"Identified {possibleFaceRegionsInImages.Sum(file => file.PossibleFaceImages.Count())} possible face region(s) in the skin tone filter pass");
 			Console.WriteLine($"{possibleFaceRegionsInImages.Sum(file => file.PossibleFaceImages.Count(possibleFace => possibleFace.IsFace))} of these was determined to be a face by the SVM filter");
-			Console.WriteLine("The extracted regions may be seen in the " + skinToneSearchApproachOutputFolder.Name + " folder");
+			Console.WriteLine("The extracted regions may be seen in the " + faceDetectionResultsFolder.Name + " folder");
 			Console.WriteLine();
 			Console.WriteLine("Press [Enter] to terminate..");
 			Console.ReadLine();

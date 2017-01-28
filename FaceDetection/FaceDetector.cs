@@ -68,7 +68,6 @@ namespace FaceDetection
 				skinMaskPreviewImage.SetRGB(
 					skinMask.Transform(isSkin => isSkin ? new RGB(255, 255, 255) : new RGB(0, 0, 0))
 				);
-				skinMaskPreviewImage.Save("SkinMask1.png");
 			}
 			
 			// Now expand the mask to include any adjacent points that match a less strict filter (which "helps to enlarge the skin map regions to include skin/background
@@ -111,7 +110,6 @@ namespace FaceDetection
 				skinMaskPreviewImage.SetRGB(
 					skinMask.Transform(isSkin => isSkin ? new RGB(255, 255, 255) : new RGB(0, 0, 0))
 				);
-				skinMaskPreviewImage.Save("SkinMask2.png");
 			}
 
 			var faceRegions = _config.FaceRegionAspectRatioFilter(
@@ -177,7 +175,6 @@ namespace FaceDetection
 						return (firstObject == null) ? new RGB(0, 0, 0) : colourToRgb(firstObject.Colour);
 					})
 				);
-				skinMaskPreviewImage.Save("SkinMask3.png");
 			}
 
 			// Look for any fully enclosed holes in each skin object (do this by flood filling from negative points and ignoring any where the fill gets to the edges of object)
