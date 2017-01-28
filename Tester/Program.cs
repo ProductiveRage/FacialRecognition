@@ -23,6 +23,7 @@ namespace Tester
 
 			var skinToneSearchApproachOutputFolder = new DirectoryInfo("Results");
 			EmptyAndDeleteFolder(skinToneSearchApproachOutputFolder);
+			skinToneSearchApproachOutputFolder.Create();
 
 			const int sampleWidth = 128;
 			const int sampleHeight = sampleWidth;
@@ -32,60 +33,65 @@ namespace Tester
 
 			var timer = new IntervalTimer(Console.WriteLine);
 			var faceClassifier = CalTechWebFacesSvmTrainer.TrainFromCaltechData(caltechWebFacesSourceImageFolder, groundTruthTextFile, sampleWidth, sampleHeight, blockSize, minimumNumberOfImagesToTrainWith, normaliser, timer.Log);
-			var skinToneResults = new[]
+			var possibleFaceRegionsInImages = new[]
 				{
 					"TigerWoods.gif"
 				}
-				.SelectMany(filePath => ExtractPossibleFaceRegionsFromImage(new FileInfo(filePath), skinToneSearchApproachOutputFolder, sizeToSaveExtractedContentAs: new Size(sampleWidth, sampleHeight), logger: timer.Log))
-				.ToArray();
-			var finalResults = skinToneResults
-				.Select(faceRegionFile =>
+				.Select(filePath => new FileInfo(filePath))
+				.Select(file => new
 				{
-					using (var source = new Bitmap(faceRegionFile.FullName))
-					{
-						return new
+					File = file,
+					PossibleFaceImages = ExtractPossibleFaceRegionsFromImage(file, timer.Log)
+				})
+				.Select(fileAndPossibleFaceRegions => new
+				{
+					File = fileAndPossibleFaceRegions.File,
+					PossibleFaceImages = fileAndPossibleFaceRegions.PossibleFaceImages
+						.Select(possibleFaceImage => new
 						{
-							File = faceRegionFile,
-							IsFace = faceClassifier.IsFace(source),
-						};
-					}
-				})
-				.Select(detectedFace =>
+							Image = possibleFaceImage.ExtractedImage,
+							RegionInSource = possibleFaceImage.RegionInSource,
+							IsFace = faceClassifier.IsFace(possibleFaceImage.ExtractedImage)
+						})
+				});
+			foreach (var file in possibleFaceRegionsInImages)
+			{
+				var faceIndex = 0;
+				var negativeIndex = 0;
+				foreach (var possibleFaceRegion in file.PossibleFaceImages)
 				{
-					var newFilePath = Path.Combine(detectedFace.File.Directory.FullName, (detectedFace.IsFace ? "FACE-" : "NEG-") + detectedFace.File.Name);
-					detectedFace.File.CopyTo(newFilePath);
-					detectedFace.File.Delete();
-					return new
+					string filename;
+					if (possibleFaceRegion.IsFace)
 					{
-						File = new FileInfo(newFilePath),
-						IsFace = detectedFace.IsFace
-					};
-				})
-				.Where(detectedFace => detectedFace.IsFace)
-				.Select(detectedFace => detectedFace.File)
-				.ToArray();
+						filename = "FACE" + faceIndex;
+						faceIndex++;
+					}
+					else
+					{
+						filename = "NEG" + negativeIndex;
+						negativeIndex++;
+					}
+					filename += "-" + file.File.Name + ".png";
+					possibleFaceRegion.Image.Save(Path.Combine(skinToneSearchApproachOutputFolder.FullName, filename));
+					possibleFaceRegion.Image.Dispose();
+				}
+			}
 
 			Console.WriteLine();
-			Console.WriteLine($"Identified {skinToneResults.Length} possible face region(s) in the skin tone filter pass");
-			Console.WriteLine($"{finalResults.Length} of these was determined to be a face by the SVM filter");
+			Console.WriteLine($"Identified {possibleFaceRegionsInImages.Sum(file => file.PossibleFaceImages.Count())} possible face region(s) in the skin tone filter pass");
+			Console.WriteLine($"{possibleFaceRegionsInImages.Sum(file => file.PossibleFaceImages.Count(possibleFace => possibleFace.IsFace))} of these was determined to be a face by the SVM filter");
 			Console.WriteLine("The extracted regions may be seen in the " + skinToneSearchApproachOutputFolder.Name + " folder");
 			Console.WriteLine();
 			Console.WriteLine("Press [Enter] to terminate..");
 			Console.ReadLine();
 		}
 
-		private static IEnumerable<FileInfo> ExtractPossibleFaceRegionsFromImage(FileInfo file, DirectoryInfo saveRegionsTo, Size sizeToSaveExtractedContentAs, Action<string> logger)
+		private static IEnumerable<PossibleFaceRegion> ExtractPossibleFaceRegionsFromImage(FileInfo file, Action<string> logger)
 		{
 			if (file == null)
 				throw new ArgumentNullException(nameof(file));
-			if (saveRegionsTo == null)
-				throw new ArgumentNullException(nameof(saveRegionsTo));
-			if ((sizeToSaveExtractedContentAs.Width <= 0) || (sizeToSaveExtractedContentAs.Height <= 0))
-				throw new ArgumentOutOfRangeException(nameof(sizeToSaveExtractedContentAs));
 			if (logger == null)
 				throw new ArgumentNullException(nameof(logger));
-
-			var outputFilename = "Output.png";
 
 			// 600 strikes a reasonable balance between successfully matching faces in my current (small) sample data while performing the work quickly
 			const int maxAllowedSize = 600;
@@ -97,75 +103,42 @@ namespace Tester
 				var largestDimension = Math.Max(source.Width, source.Height);
 				var scaleDown = (largestDimension > maxAllowedSize) ? ((double)largestDimension / maxAllowedSize) : 1;
 				var colourData = (scaleDown > 1) ? GetResizedBitmapData(source, scaleDown) : source.GetRGB();
-
 				var faceRegions = faceDetector.GetPossibleFaceRegions(colourData);
 				if (scaleDown > 1)
 					faceRegions = faceRegions.Select(region => Scale(region, scaleDown, source.Size));
-				faceRegions = faceRegions.Select(region =>
-				{
-					region = ToDesiredAspectRatio(region, sizeToSaveExtractedContentAs.Width / sizeToSaveExtractedContentAs.Height);
-					region.Intersect(new Rectangle(new Point(0, 0), source.Size));
-					return region;
-				});
-				WriteOutputFile(outputFilename, source, faceRegions, Color.GreenYellow);
-				logger($"Complete (written to {outputFilename}), {faceRegions.Count()} region(s) identified");
-
-				foreach (var indexedFaceRegion in faceRegions.Select((faceRegion, index) => new { Index = index, FaceRegion = faceRegion }))
-				{
-					using (var resizedAndCentredFaceContent = source.ExtractImageSectionAndResize(indexedFaceRegion.FaceRegion, sizeToSaveExtractedContentAs))
-					{
-						var fileToSaveInto = new FileInfo(Path.Combine(saveRegionsTo.FullName, $"{file.Name}-face{indexedFaceRegion.Index}.png"));
-						if (!fileToSaveInto.Directory.Exists)
-							fileToSaveInto.Directory.Create();
-						resizedAndCentredFaceContent.Save(fileToSaveInto.FullName);
-						yield return fileToSaveInto;
-					}
-				}
+				logger($"Complete - {faceRegions.Count()} region(s) identified");
+				foreach (var faceRegion in faceRegions)
+					yield return new PossibleFaceRegion(source.Clone(faceRegion, source.PixelFormat), faceRegion);
 			}
 		}
 
-		private static Rectangle ToDesiredAspectRatio(Rectangle region, double aspectRatio)
+		private sealed class PossibleFaceRegion
 		{
-			if (aspectRatio <= 0)
-				throw new ArgumentOutOfRangeException(nameof(aspectRatio));
-
-			var regionAspectRatio = (double)region.Width / region.Height;
-			if (regionAspectRatio > aspectRatio)
+			public PossibleFaceRegion(Bitmap extractedImage, Rectangle regionInSource)
 			{
-				var requiredHeight = region.Width / aspectRatio;
-				var additionalHeightRequiredEitherSide = (int)Math.Round((requiredHeight - region.Height) / 2);
-				region.Inflate(width: 0, height: additionalHeightRequiredEitherSide);
+				if (extractedImage == null)
+					throw new ArgumentNullException(nameof(extractedImage));
+				if ((regionInSource.Width != extractedImage.Width) || (regionInSource.Height != extractedImage.Height))
+					throw new ArgumentException($"Specified {nameof(regionInSource)} dimensions do not match {nameof(extractedImage)} image");
+				ExtractedImage = extractedImage;
+				RegionInSource = regionInSource;
 			}
-			else if (regionAspectRatio < aspectRatio)
-			{
-				var requiredWidth = region.Height * aspectRatio;
-				var additionalWidthRequiredEitherSide = (int)Math.Round((requiredWidth - region.Width) / 2);
-				region.Inflate(width: additionalWidthRequiredEitherSide, height: 0);
-			}
-			return region;
+			public Bitmap ExtractedImage { get; }
+			public Rectangle RegionInSource { get; }
 		}
 
-		private static DataRectangle<RGB> GetResizedBitmapData(Bitmap source, double scale)
-		{
-			if (source == null)
-				throw new ArgumentNullException(nameof(source));
-			if (scale <= 0)
-				throw new ArgumentOutOfRangeException(nameof(scale));
-
-			using (var resizedSource = GetResizedBitmap(source, scale))
-			{
-				return resizedSource.GetRGB();
-			}
-		}
-
-		private static Bitmap GetResizedBitmap(Bitmap source, double divideDimensionsBy)
+		private static DataRectangle<RGB> GetResizedBitmapData(Bitmap source, double divideDimensionsBy)
 		{
 			if (source == null)
 				throw new ArgumentNullException(nameof(source));
 			if (divideDimensionsBy <= 0)
 				throw new ArgumentOutOfRangeException(nameof(divideDimensionsBy));
 
-			return new Bitmap(source, new Size((int)Math.Round(source.Width / divideDimensionsBy), (int)Math.Round(source.Height / divideDimensionsBy)));
+			var resizeTo = new Size((int)Math.Round(source.Width / divideDimensionsBy), (int)Math.Round(source.Height / divideDimensionsBy));
+			using (var resizedSource = new Bitmap(source, resizeTo))
+			{
+				return resizedSource.GetRGB();
+			}
 		}
 
 		private static Rectangle Scale(Rectangle region, double scale, Size limits)
