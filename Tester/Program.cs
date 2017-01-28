@@ -53,7 +53,9 @@ namespace Tester
 							RegionInSource = possibleFaceImage.RegionInSource,
 							IsFace = faceClassifier.IsFace(possibleFaceImage.ExtractedImage)
 						})
-				});
+						.ToArray() // Call ToArray to prevent repeated evaluation (in loop below and in the summary message further down)
+				})
+				.ToArray(); // Call ToArray to prevent repeated evaluation (in loop below and in the summary message further down)
 			foreach (var file in possibleFaceRegionsInImages)
 			{
 				var faceIndex = 0;
