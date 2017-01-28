@@ -54,7 +54,7 @@ namespace Tester
 							IsFace = faceClassifier.IsFace(possibleFaceImage.ExtractedImage)
 						})
 				})
-				.Select((fileAndPossibleFaceRegions, index) =>
+				.Select((fileAndPossibleFaceRegions, index) => 
 				{
 					// This will save the positive and negative matches into individual files in faceDetectionResultsFolder
 					var possibleFaceRegions = fileAndPossibleFaceRegions.PossibleFaceImages.ToArray(); // Prevent repeated evaluation below
@@ -80,7 +80,7 @@ namespace Tester
 					return new
 					{
 						File = fileAndPossibleFaceRegions.File,
-						PossibleFaceImages = fileAndPossibleFaceRegions.PossibleFaceImages
+						PossibleFaceImages = possibleFaceRegions
 							.Select(possibleFaceImage => new
 							{
 								RegionInSource = possibleFaceImage.RegionInSource,
