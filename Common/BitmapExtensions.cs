@@ -116,6 +116,10 @@ namespace Common
 			}
 		}
 
+		/// <summary>
+		/// If the aspect ratio of the region does not match of the destinationSize then black bars will appear around the image (either above and below or to the sides, depending
+		/// upon in which dimension the aspect ratio must be adjusted)
+		/// </summary>
 		public static Bitmap ExtractImageSectionAndResize(this Bitmap source, Rectangle region, Size destinationSize)
 		{
 			if (source == null)
