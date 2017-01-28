@@ -63,13 +63,6 @@ namespace FaceDetection
 			var skinMask = smoothedHues.Transform(transformer: _config.SkinFilter);
 			_logger("Built initial skin mask");
 
-			using (var skinMaskPreviewImage = new Bitmap(skinMask.Width, skinMask.Height))
-			{
-				skinMaskPreviewImage.SetRGB(
-					skinMask.Transform(isSkin => isSkin ? new RGB(255, 255, 255) : new RGB(0, 0, 0))
-				);
-			}
-			
 			// Now expand the mask to include any adjacent points that match a less strict filter (which "helps to enlarge the skin map regions to include skin/background
 			// border pixels, regions near hair or other features, or desaturated areas" - as per Jay Kapur, though he recommends five iterations and I think that a slightly
 			// higher value may provide better results)
@@ -104,13 +97,6 @@ namespace FaceDetection
 				}
 			);
 			_logger("Completed final skin mask");
-
-			using (var skinMaskPreviewImage = new Bitmap(skinMask.Width, skinMask.Height))
-			{
-				skinMaskPreviewImage.SetRGB(
-					skinMask.Transform(isSkin => isSkin ? new RGB(255, 255, 255) : new RGB(0, 0, 0))
-				);
-			}
 
 			var faceRegions = _config.FaceRegionAspectRatioFilter(
 					IdentifyFacesFromSkinMask(skinMask)
@@ -156,26 +142,6 @@ namespace FaceDetection
 				skinObjects.Add(pointsInObject);
 			}
 			skinObjects = skinObjects.Where(skinObject => skinObject.Length >= (64 * scale)).ToList(); // Ignore any very small regions
-
-
-			using (var skinMaskPreviewImage = new Bitmap(skinMask.Width, skinMask.Height))
-			{
-				Func<Color, RGB> colourToRgb = c => new RGB(c.R, c.G, c.B);
-				var colours = new[]
-				{
-					Color.Red, Color.Gray, Color.Green, Color.Blue, Color.DarkBlue, Color.Yellow, Color.White, Color.Turquoise, Color.Teal, Color.Thistle, Color.SpringGreen, Color.YellowGreen, Color.MintCream, Color.MistyRose,
-					Color.Red, Color.Gray, Color.Green, Color.Blue, Color.DarkBlue, Color.Yellow, Color.White, Color.Turquoise, Color.Teal, Color.Thistle, Color.SpringGreen, Color.YellowGreen, Color.MintCream, Color.MistyRose
-				};
-
-				var allSkinObjectPoints = skinObjects.Select((o, i) => new { Points = new HashSet<Point>(o), Colour = colours[i] }).ToArray();
-				skinMaskPreviewImage.SetRGB(
-					skinMask.Transform((isSkin, point) =>
-					{
-						var firstObject = allSkinObjectPoints.FirstOrDefault(o => o.Points.Contains(point));
-						return (firstObject == null) ? new RGB(0, 0, 0) : colourToRgb(firstObject.Colour);
-					})
-				);
-			}
 
 			// Look for any fully enclosed holes in each skin object (do this by flood filling from negative points and ignoring any where the fill gets to the edges of object)
 			var boundsForSkinObjects = new List<Rectangle>();
