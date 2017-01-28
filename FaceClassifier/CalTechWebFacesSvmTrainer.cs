@@ -22,7 +22,8 @@ namespace FaceClassifier
 			int sampleHeight,
 			int blockSize,
 			int minimumNumberOfImagesToTrainWith,
-			Normaliser normaliser)
+			Normaliser normaliser,
+			Action<string> logger)
 		{
 			if (caltechWebFacesSourceImageFolder == null)
 				throw new ArgumentNullException(nameof(caltechWebFacesSourceImageFolder));
@@ -38,6 +39,8 @@ namespace FaceClassifier
 				throw new ArgumentOutOfRangeException(nameof(minimumNumberOfImagesToTrainWith));
 			if (normaliser == null)
 				throw new ArgumentNullException(nameof(normaliser));
+			if (logger == null)
+				throw new ArgumentNullException(nameof(logger));
 
 			var timer = Stopwatch.StartNew();
 			var trainingDataOfHogsAndIsFace = new List<Tuple<double[], bool>>();
@@ -69,7 +72,7 @@ namespace FaceClassifier
 				var approximateNumberOfImagesProcessed = (int)Math.Floor((double)trainingDataOfHogsAndIsFace.Count / numberOfImagesToProcessBeforeShowingUpdateMessage) * numberOfImagesToProcessBeforeShowingUpdateMessage;
 				if (approximateNumberOfImagesProcessed > numberOfImagesThatLastProgressMessageWasShownAt)
 				{
-					Console.WriteLine("Processed " + approximateNumberOfImagesProcessed + " images");
+					logger("Processed " + approximateNumberOfImagesProcessed + " images");
 					numberOfImagesThatLastProgressMessageWasShownAt = approximateNumberOfImagesProcessed;
 				}
 				if (trainingDataOfHogsAndIsFace.Count >= minimumNumberOfImagesToTrainWith)
@@ -77,7 +80,7 @@ namespace FaceClassifier
 			}
 			if (trainingDataOfHogsAndIsFace.Count < minimumNumberOfImagesToTrainWith)
 				throw new Exception($"After loaded all data, there are only {trainingDataOfHogsAndIsFace.Count} training images but {minimumNumberOfImagesToTrainWith} were requested");
-			Console.WriteLine("Time to load image data: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
+			logger("Time to load image data: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
 			timer.Restart();
 
 			var kernel = new Linear();
@@ -86,20 +89,18 @@ namespace FaceClassifier
 			var inputs = trainingDataOfHogsAndIsFace.Select(dataAndResult => dataAndResult.Item1).ToArray();
 			var outputs = trainingDataOfHogsAndIsFace.Select(dataAndResult => dataAndResult.Item2).ToArray();
 			var svm = smo.Learn(inputs, outputs);
-			Console.WriteLine("Time to teach SVM: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
+			logger("Time to teach SVM: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
 			timer.Restart();
 
 			svm.Compress();
-			Console.WriteLine("Time to compress SVM: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
+			logger("Time to compress SVM: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
 			timer.Restart();
 
 			var predicted = svm.Decide(inputs);
 			var error = new ZeroOneLoss(outputs).Loss(predicted);
 			if (error > 0)
-			{
-				// TODO: Log this?
-			}
-			Console.WriteLine("Time to test SVM against training data: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
+				logger("*** Generated SVM has non-zero error against training data: " + error);
+			logger("Time to test SVM against training data: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
 			timer.Restart();
 
 			return new SvmClassifier(svm, sampleWidth, sampleHeight, blockSize, normaliser);

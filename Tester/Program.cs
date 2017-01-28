@@ -30,12 +30,13 @@ namespace Tester
 			Normaliser normaliser = new OverlappingBlockwiseNormaliser(blockSize: 2).Normalise;
 			const int minimumNumberOfImagesToTrainWith = 2000;
 
-			var faceClassifier = CalTechWebFacesSvmTrainer.TrainFromCaltechData(caltechWebFacesSourceImageFolder, groundTruthTextFile, sampleWidth, sampleHeight, blockSize, minimumNumberOfImagesToTrainWith, normaliser);
+			var timer = new IntervalTimer(Console.WriteLine);
+			var faceClassifier = CalTechWebFacesSvmTrainer.TrainFromCaltechData(caltechWebFacesSourceImageFolder, groundTruthTextFile, sampleWidth, sampleHeight, blockSize, minimumNumberOfImagesToTrainWith, normaliser, timer.Log);
 			var skinToneResults = new[]
 				{
 					"TigerWoods.gif"
 				}
-				.SelectMany(filePath => ExtractPossibleFaceRegionsFromImage(new FileInfo(filePath), skinToneSearchApproachOutputFolder, sizeToSaveExtractedContentAs: new Size(sampleWidth, sampleHeight)))
+				.SelectMany(filePath => ExtractPossibleFaceRegionsFromImage(new FileInfo(filePath), skinToneSearchApproachOutputFolder, sizeToSaveExtractedContentAs: new Size(sampleWidth, sampleHeight), logger: timer.Log))
 				.ToArray();
 			var finalResults = skinToneResults
 				.Select(faceRegionFile =>
@@ -73,7 +74,7 @@ namespace Tester
 			Console.ReadLine();
 		}
 
-		private static IEnumerable<FileInfo> ExtractPossibleFaceRegionsFromImage(FileInfo file, DirectoryInfo saveRegionsTo, Size sizeToSaveExtractedContentAs)
+		private static IEnumerable<FileInfo> ExtractPossibleFaceRegionsFromImage(FileInfo file, DirectoryInfo saveRegionsTo, Size sizeToSaveExtractedContentAs, Action<string> logger)
 		{
 			if (file == null)
 				throw new ArgumentNullException(nameof(file));
@@ -81,6 +82,8 @@ namespace Tester
 				throw new ArgumentNullException(nameof(saveRegionsTo));
 			if ((sizeToSaveExtractedContentAs.Width <= 0) || (sizeToSaveExtractedContentAs.Height <= 0))
 				throw new ArgumentOutOfRangeException(nameof(sizeToSaveExtractedContentAs));
+			if (logger == null)
+				throw new ArgumentNullException(nameof(logger));
 
 			var outputFilename = "Output.png";
 
@@ -88,8 +91,7 @@ namespace Tester
 			const int maxAllowedSize = 600;
 
 			var config = DefaultConfiguration.Instance;
-			var timer = new IntervalTimer(Console.WriteLine);
-			var faceDetector = new FaceDetector(config, timer.Log);
+			var faceDetector = new FaceDetector(config, logger);
 			using (var source = new Bitmap(file.FullName))
 			{
 				var largestDimension = Math.Max(source.Width, source.Height);
@@ -106,7 +108,7 @@ namespace Tester
 					return region;
 				});
 				WriteOutputFile(outputFilename, source, faceRegions, Color.GreenYellow);
-				timer.Log($"Complete (written to {outputFilename}), {faceRegions.Count()} region(s) identified");
+				logger($"Complete (written to {outputFilename}), {faceRegions.Count()} region(s) identified");
 
 				foreach (var indexedFaceRegion in faceRegions.Select((faceRegion, index) => new { Index = index, FaceRegion = faceRegion }))
 				{
