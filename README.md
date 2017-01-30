@@ -30,7 +30,7 @@ Currently, only a single sample image is used to test this process - an image of
 
 To be honest, it's probably not the best example since the skin tone pass produces only one potential face region and zero false negatives - so the SVM filter doesn't have much to do! I will include more images that I've been using in testing at some point.
 
-![Tiger Woods' face](https://raw.githubusercontent.com/ProductiveRage/FacialRecognition/master/TigerWoodsMatch.png)
+![Tiger Woods' face](https://raw.githubusercontent.com/ProductiveRage/FacialRecognition/master/TigerWoodsMatch.jpg)
 
 When the program has run, it state how many potential face regions that the skin tone pass encountered and how many of those passed the SVM filter. A "Results" folder will be populated with all images extracted from the skin tone pass and will have an annotated output image for each input, which outlines the identified faces).
 
