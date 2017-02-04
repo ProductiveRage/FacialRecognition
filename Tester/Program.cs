@@ -32,8 +32,8 @@ namespace Tester
 
 			var timer = new IntervalTimer(Console.WriteLine);
 			var faceClassifier = CalTechWebFacesSvmTrainer.TrainFromCaltechData(caltechWebFacesSourceImageFolder, groundTruthTextFile, sampleWidth, sampleHeight, blockSize, minimumNumberOfImagesToTrainWith, normaliser, timer.Log);
-
-			var faceDetector = new FaceDetector(DefaultConfiguration.Instance, timer.Log);
+				
+			var faceDetector = SlidingWindowRegionGenerator.DefaultConfiguration;
 			var possibleFaceRegionsInImages = new[]
 				{
 					"TigerWoods.gif"
@@ -107,7 +107,7 @@ namespace Tester
 				.ToArray(); // Evaluate the above work
 
 			Console.WriteLine();
-			Console.WriteLine($"Identified {possibleFaceRegionsInImages.Sum(file => file.PossibleFaceImages.Count())} possible face region(s) in the skin tone filter pass");
+			Console.WriteLine($"Identified {possibleFaceRegionsInImages.Sum(file => file.PossibleFaceImages.Count())} possible face region(s) in the first pass");
 			Console.WriteLine($"{possibleFaceRegionsInImages.Sum(file => file.PossibleFaceImages.Count(possibleFace => possibleFace.IsFace))} of these was determined to be a face by the SVM filter");
 			Console.WriteLine("The extracted regions may be seen in the " + faceDetectionResultsFolder.Name + " folder");
 			Console.WriteLine();
