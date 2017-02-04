@@ -71,7 +71,7 @@ namespace FaceDetection
 		public bool RelaxedSkinFilter(HueSaturation colour)
 		{
 			// This is the same as described at http://web.archive.org/web/20090723024922/http:/geocities.com/jaykapur/face.html, which is the same as the article "Naked People Skin
-			// Filter (Margaret M. Fleck and David A Forsyth)" that it references (https://www.cs.hmc.edu/~fleck/naked-skin.html)
+			// Filter (Margaret M. Fleck and David A Forsyth)" that it references (http://mfleck.cs.illinois.edu/naked-skin.html)
 			return (colour.Hue >= 110) && (colour.Hue <= 180) && (colour.Saturation >= 0) && (colour.Saturation <= 180);
 		}
 		public int NumberOfSkinMaskRelaxedExpansions { get { return 2; } }
