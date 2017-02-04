@@ -32,8 +32,8 @@ namespace Tester
 
 			var timer = new IntervalTimer(Console.WriteLine);
 			var faceClassifier = CalTechWebFacesSvmTrainer.TrainFromCaltechData(caltechWebFacesSourceImageFolder, groundTruthTextFile, sampleWidth, sampleHeight, blockSize, minimumNumberOfImagesToTrainWith, normaliser, timer.Log);
-				
-			var faceDetector = SlidingWindowRegionGenerator.DefaultConfiguration;
+
+			var faceDetector = new FaceDetector(DefaultConfiguration.Instance, timer.Log);
 			var possibleFaceRegionsInImages = new[]
 				{
 					"TigerWoods.gif"
