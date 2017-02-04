@@ -48,21 +48,21 @@ namespace FaceDetection
 			var colourData = CorrectZeroResponse(source);
 			_logger("Corrected zero response");
 
-			var values = _config.IRgByCalculator(colourData);
+			var rgByIValues = _config.IRgByCalculator(colourData);
 			_logger("Calculated I/RgBy values");
 
 			// To compute texture amplitude -
 			//  1. The intensity image was smoothed with a median filter of radius 4 * SCALE (8 for Jay Kapur method)
 			//  2. The result was subtracted from the original image
 			//  3. The absolute values of these differences are then run through a second median filter of radius 6 * SCALE (12 for Jay Kapur method)
-			var smoothedIntensity = MedianFilter(values, value => value.I, _config.TextureAmplitudeFirstPassSmoothenMultiplier * scale);
-			var differenceBetweenOriginalIntensityAndSmoothIntensity = values.CombineWith(smoothedIntensity, (x, y) => Math.Abs(x.I - y));
-			var textureAmplitude = MedianFilter(differenceBetweenOriginalIntensityAndSmoothIntensity, value => value, _config.TextureAmplitudeSecondPassSmoothenMultiplier * scale);
+			var smoothedIntensity = rgByIValues.MedianFilter(value => value.I, _config.TextureAmplitudeFirstPassSmoothenMultiplier * scale);
+			var differenceBetweenOriginalIntensityAndSmoothIntensity = rgByIValues.CombineWith(smoothedIntensity, (x, y) => Math.Abs(x.I - y));
+			var textureAmplitude = differenceBetweenOriginalIntensityAndSmoothIntensity.MedianFilter(value => value, _config.TextureAmplitudeSecondPassSmoothenMultiplier * scale);
 			_logger("Calculated texture amplitude");
 
 			// The Rg and By arrays are smoothed with a median filter of radius 2 * SCALE, to reduce noise.
-			var smoothedRg = MedianFilter(values, value => value.Rg, _config.RgBySmoothenMultiplier * scale);
-			var smoothedBy = MedianFilter(values, value => value.By, _config.RgBySmoothenMultiplier * scale);
+			var smoothedRg = rgByIValues.MedianFilter(value => value.Rg, _config.RgBySmoothenMultiplier * scale);
+			var smoothedBy = rgByIValues.MedianFilter(value => value.By, _config.RgBySmoothenMultiplier * scale);
 			var smoothedHues = smoothedRg.CombineWith(
 				smoothedBy,
 				(rg, by, coordinates) =>
@@ -91,7 +91,7 @@ namespace FaceDetection
 							return true;
 						if (!_config.RelaxedSkinFilter(hue))
 							return false;
-						var surroundingArea = GetRectangleAround(smoothedHues, coordinates, distanceToExpandLeftAndUp: 1, distanceToExpandRightAndDown: 1);
+						var surroundingArea = smoothedHues.GetRectangleAround(coordinates, distanceToExpandLeftAndUp: 1, distanceToExpandRightAndDown: 1);
 						return skinMask.AnyValuesMatch(surroundingArea, adjacentMask => adjacentMask);
 					}
 				);
@@ -130,7 +130,7 @@ namespace FaceDetection
 				throw new ArgumentOutOfRangeException(nameof(percentageToAdd));
 			if ((imageSize.Width <= 0) || (imageSize.Height <= 0))
 				throw new ArgumentOutOfRangeException(nameof(imageSize));
-
+			 
 			area.Inflate((int)Math.Round(area.Width * percentageToAdd), (int)Math.Round(area.Height * percentageToAdd)); // Rectangle is a struct so we're not messing with the caller's Rectangle reference
 			area.Intersect(new Rectangle(new Point(0, 0), imageSize));
 			return area;
@@ -226,71 +226,6 @@ namespace FaceDetection
 		private static double RadianToDegree(double angle)
 		{
 			return angle * (180d / Math.PI);
-		}
-
-		/// <summary>
-		/// This reduces variance in data by breaking it into blocks and overwriting the block's data with a single value - the median value for that block
-		/// </summary>
-		private static DataRectangle<double> MedianFilter<TSource>(DataRectangle<TSource> values, Func<TSource, double> valueExtractor, int blockSize)
-		{
-			if (values == null)
-				throw new ArgumentNullException(nameof(values));
-			if (valueExtractor == null)
-				throw new ArgumentNullException(nameof(valueExtractor));
-			if (blockSize <= 0)
-				throw new ArgumentOutOfRangeException(nameof(blockSize));
-
-			var result = new double[values.Width, values.Height];
-			var distanceBetweenPoints = blockSize + 1; // After each media is taken, we need to move past the current pixel and then the expansions distance to get the new centre
-			for (var x = 0; x < values.Width; x += distanceBetweenPoints)
-			{
-				for (var y = 0; y < values.Height; y += distanceBetweenPoints)
-				{
-					// We start at the top-left and move across and down from there (so GetRectangleAround never expands up and left, it only expands down and right)
-					var areaToMedianOver = GetRectangleAround(values, new Point(x, y), distanceToExpandLeftAndUp: 0, distanceToExpandRightAndDown: blockSize);
-					var valuesToGetMedianFrom = new double[areaToMedianOver.Width * areaToMedianOver.Height];
-					var i = 0;
-					for (var xToGetMedianFrom = areaToMedianOver.Left; xToGetMedianFrom < areaToMedianOver.Right; xToGetMedianFrom++)
-					{
-						for (var yToGetMedianFrom = areaToMedianOver.Top; yToGetMedianFrom < areaToMedianOver.Bottom; yToGetMedianFrom++)
-						{
-							var value = values[xToGetMedianFrom, yToGetMedianFrom];
-							valuesToGetMedianFrom[i] = valueExtractor(value);
-							i++;
-						}
-					}
-					var medianValue = valuesToGetMedianFrom.OrderBy(value => value).Skip(valuesToGetMedianFrom.Length / 2).First();
-					for (var xToGetMedianFrom = areaToMedianOver.Left; xToGetMedianFrom < areaToMedianOver.Right; xToGetMedianFrom++)
-					{
-						for (var yToGetMedianFrom = areaToMedianOver.Top; yToGetMedianFrom < areaToMedianOver.Bottom; yToGetMedianFrom++)
-							result[xToGetMedianFrom, yToGetMedianFrom] = medianValue;
-					}
-				}
-			}
-			return DataRectangle.For(result);
-		}
-
-		private static Rectangle GetRectangleAround<T>(DataRectangle<T> values, Point coordinates, int distanceToExpandLeftAndUp, int distanceToExpandRightAndDown)
-		{
-			if (values == null)
-				throw new ArgumentNullException(nameof(values));
-			if ((coordinates.X < 0) || (coordinates.X >= values.Width) || (coordinates.Y < 0) || (coordinates.Y >= values.Height))
-				throw new ArgumentOutOfRangeException(nameof(coordinates));
-			if (distanceToExpandLeftAndUp < 0)
-				throw new ArgumentOutOfRangeException(nameof(distanceToExpandLeftAndUp));
-			if (distanceToExpandRightAndDown <= 0)
-				throw new ArgumentOutOfRangeException(nameof(distanceToExpandRightAndDown));
-
-			var squareMinX = Math.Max(coordinates.X - distanceToExpandLeftAndUp, 0);
-			var squareMaxX = Math.Min(coordinates.X + distanceToExpandRightAndDown, values.Width - 1);
-			var squareMinY = Math.Max(coordinates.Y - distanceToExpandLeftAndUp, 0);
-			var squareMaxY = Math.Min(coordinates.Y + distanceToExpandRightAndDown, values.Height - 1);
-			return new Rectangle(
-				x: squareMinX,
-				y: squareMinY,
-				width: (squareMaxX - squareMinX) + 1,
-				height: (squareMaxY - squareMinY) + 1
-			);
 		}
 
 		private static DataRectangle<RGB> CorrectZeroResponse(DataRectangle<RGB> values)
