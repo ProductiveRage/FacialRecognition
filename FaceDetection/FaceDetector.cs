@@ -6,7 +6,7 @@ using Common;
 
 namespace FaceDetection
 {
-	public sealed class FaceDetector
+	public sealed class FaceDetector : ILookForPossibleFaceRegions
 	{
 		private readonly IExposeConfigurationOptions _config;
 		private readonly Action<string> _logger;
@@ -22,7 +22,22 @@ namespace FaceDetection
 		}
 		public FaceDetector(Action<string> logger) : this(DefaultConfiguration.Instance, logger) { }
 
-		public IEnumerable<Rectangle> GetPossibleFaceRegions(DataRectangle<RGB> source)
+		public IEnumerable<Rectangle> GetPossibleFaceRegions(Bitmap source)
+		{
+			if (source == null)
+				throw new ArgumentNullException(nameof(source));
+
+			var largestDimension = Math.Max(source.Width, source.Height);
+			var scaleDown = (largestDimension > _config.MaximumImageDimension) ? ((double)largestDimension / _config.MaximumImageDimension) : 1;
+			var colourData = (scaleDown > 1) ? GetResizedBitmapData(source, scaleDown) : source.GetRGB();
+			var faceRegions = GetPossibleFaceRegionsFromColourData(colourData);
+			if (scaleDown > 1)
+				faceRegions = faceRegions.Select(region => Scale(region, scaleDown, source.Size));
+			_logger($"Complete - {faceRegions.Count()} region(s) identified");
+			return faceRegions;
+		}
+
+		private IEnumerable<Rectangle> GetPossibleFaceRegionsFromColourData(DataRectangle<RGB> source)
 		{
 			if (source == null)
 				throw new ArgumentNullException(nameof(source));
@@ -292,6 +307,41 @@ namespace FaceDetection
 
 			// Subtract this from every RGB component
 			return values.Transform(value => new RGB((byte)(value.R - smallestValue), (byte)(value.G - smallestValue), (byte)(value.B - smallestValue)));
+		}
+
+		private static DataRectangle<RGB> GetResizedBitmapData(Bitmap source, double divideDimensionsBy)
+		{
+			if (source == null)
+				throw new ArgumentNullException(nameof(source));
+			if (divideDimensionsBy <= 0)
+				throw new ArgumentOutOfRangeException(nameof(divideDimensionsBy));
+
+			var resizeTo = new Size((int)Math.Round(source.Width / divideDimensionsBy), (int)Math.Round(source.Height / divideDimensionsBy));
+			using (var resizedSource = new Bitmap(source, resizeTo))
+			{
+				return resizedSource.GetRGB();
+			}
+		}
+
+		private static Rectangle Scale(Rectangle region, double scale, Size limits)
+		{
+			if (scale <= 0)
+				throw new ArgumentOutOfRangeException(nameof(scale));
+			if ((limits.Width <= 0) || (limits.Height <= 0))
+				throw new ArgumentOutOfRangeException(nameof(limits));
+
+			// Need to ensure that we don't exceed the limits of the original image when scaling regions back up (there could be rounding errors that result in invalid
+			// regions when scaling up that we need to be careful of)
+			var left = (int)Math.Round(region.X * scale);
+			var top = (int)Math.Round(region.Y * scale);
+			var width = (int)Math.Round(region.Width * scale);
+			var height = (int)Math.Round(region.Height * scale);
+			return Rectangle.FromLTRB(
+				left: left,
+				top: top,
+				right: Math.Min(left + width, limits.Width),
+				bottom: Math.Min(top + height, limits.Height)
+			);
 		}
 	}
 }

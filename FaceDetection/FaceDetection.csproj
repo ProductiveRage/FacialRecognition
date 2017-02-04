@@ -36,6 +36,7 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ILookForPossibleFaceRegions.cs" />
     <Compile Include="HueSaturation.cs" />
     <Compile Include="IExposeConfigurationOptions.cs" />
     <Compile Include="IRgBy.cs" />

@@ -12,6 +12,12 @@ namespace FaceDetection
 		private DefaultConfiguration() { }
 
 		/// <summary>
+		/// If either dimension of the input image is larger than this then it will be resized before processing so that the largest edge is this many pixels long (this potential
+		/// face region rectangles returned will be scaled back up so that they correspond to the original image)
+		/// </summary>
+		public int MaximumImageDimension { get { return 600; } } // 600 strikes a reasonable balance between successfully matching faces in my current (small) sample data while performing the work quickly
+
+		/// <summary>
 		/// When smoothening colour and texture amplitude data, the magnitude of smoothening depends upon the size of the source image - large images will need more smoothening
 		/// to get the same effect as less processing applied to small images
 		/// </summary>

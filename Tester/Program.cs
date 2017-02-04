@@ -121,19 +121,11 @@ namespace Tester
 			if (logger == null)
 				throw new ArgumentNullException(nameof(logger));
 
-			// 600 strikes a reasonable balance between successfully matching faces in my current (small) sample data while performing the work quickly
-			const int maxAllowedSize = 600;
-
 			var config = DefaultConfiguration.Instance;
 			var faceDetector = new FaceDetector(config, logger);
 			using (var source = new Bitmap(file.FullName))
 			{
-				var largestDimension = Math.Max(source.Width, source.Height);
-				var scaleDown = (largestDimension > maxAllowedSize) ? ((double)largestDimension / maxAllowedSize) : 1;
-				var colourData = (scaleDown > 1) ? GetResizedBitmapData(source, scaleDown) : source.GetRGB();
-				var faceRegions = faceDetector.GetPossibleFaceRegions(colourData);
-				if (scaleDown > 1)
-					faceRegions = faceRegions.Select(region => Scale(region, scaleDown, source.Size));
+				var faceRegions = faceDetector.GetPossibleFaceRegions(source);
 				logger($"Complete - {faceRegions.Count()} region(s) identified");
 				foreach (var faceRegion in faceRegions)
 					yield return new PossibleFaceRegion(source.Clone(faceRegion, source.PixelFormat), faceRegion);
@@ -153,41 +145,6 @@ namespace Tester
 			}
 			public Bitmap ExtractedImage { get; }
 			public Rectangle RegionInSource { get; }
-		}
-
-		private static DataRectangle<RGB> GetResizedBitmapData(Bitmap source, double divideDimensionsBy)
-		{
-			if (source == null)
-				throw new ArgumentNullException(nameof(source));
-			if (divideDimensionsBy <= 0)
-				throw new ArgumentOutOfRangeException(nameof(divideDimensionsBy));
-
-			var resizeTo = new Size((int)Math.Round(source.Width / divideDimensionsBy), (int)Math.Round(source.Height / divideDimensionsBy));
-			using (var resizedSource = new Bitmap(source, resizeTo))
-			{
-				return resizedSource.GetRGB();
-			}
-		}
-
-		private static Rectangle Scale(Rectangle region, double scale, Size limits)
-		{
-			if (scale <= 0)
-				throw new ArgumentOutOfRangeException(nameof(scale));
-			if ((limits.Width <= 0) || (limits.Height <= 0))
-				throw new ArgumentOutOfRangeException(nameof(limits));
-
-			// Need to ensure that we don't exceed the limits of the original image when scaling regions back up (there could be rounding errors that result in invalid
-			// regions when scaling up that we need to be careful of)
-			var left = (int)Math.Round(region.X * scale);
-			var top = (int)Math.Round(region.Y * scale);
-			var width = (int)Math.Round(region.Width * scale);
-			var height = (int)Math.Round(region.Height * scale);
-			return Rectangle.FromLTRB(
-				left: left,
-				top: top,
-				right: Math.Min(left + width, limits.Width),
-				bottom: Math.Min(top + height, limits.Height)
-			);
 		}
 
 		private static void WriteOutputFile(string outputFilename, Bitmap source, IEnumerable<Rectangle> faceRegions, Color outline)

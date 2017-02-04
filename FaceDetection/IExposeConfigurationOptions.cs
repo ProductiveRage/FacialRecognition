@@ -6,6 +6,12 @@ namespace FaceDetection
 {
 	public interface IExposeConfigurationOptions
 	{
+		/// <summary>
+		/// If either dimension of the input image is larger than this then it will be resized before processing so that the largest edge is this many pixels long (this potential
+		/// face region rectangles returned will be scaled back up so that they correspond to the original image)
+		/// </summary>
+		int MaximumImageDimension { get; }
+
 		int TextureAmplitudeFirstPassSmoothenMultiplier { get; }
 		int TextureAmplitudeSecondPassSmoothenMultiplier { get; }
 
