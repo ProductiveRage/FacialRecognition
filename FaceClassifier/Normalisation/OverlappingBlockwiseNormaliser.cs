@@ -5,6 +5,7 @@ using Common;
 
 namespace FaceClassifier.Normalisation
 {
+	[Serializable]
 	public sealed class OverlappingBlockwiseNormaliser
 	{
 		private readonly int _blockSize;

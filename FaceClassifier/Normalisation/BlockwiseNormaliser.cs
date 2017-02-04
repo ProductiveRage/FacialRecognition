@@ -4,6 +4,7 @@ using Common;
 
 namespace FaceClassifier.Normalisation
 {
+	[Serializable]
 	public sealed class BlockwiseNormaliser
 	{
 		private readonly int _blockSize;

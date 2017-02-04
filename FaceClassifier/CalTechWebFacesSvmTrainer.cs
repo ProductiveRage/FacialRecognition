@@ -263,6 +263,7 @@ namespace FaceClassifier
 			}
 		}
 
+		[Serializable]
 		private sealed class SvmClassifier : IClassifyPotentialFaces
 		{
 			private readonly SupportVectorMachine<Linear> _svm;

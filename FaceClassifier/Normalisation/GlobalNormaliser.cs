@@ -4,6 +4,7 @@ using Common;
 
 namespace FaceClassifier.Normalisation
 {
+	[Serializable]
 	public static class GlobalNormaliser
 	{
 		/// <summary>
