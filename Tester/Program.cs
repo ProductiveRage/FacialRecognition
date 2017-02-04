@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using Common;
 using FaceClassifier;
 using FaceClassifier.Normalisation;
 using FaceDetection;
@@ -33,6 +32,8 @@ namespace Tester
 
 			var timer = new IntervalTimer(Console.WriteLine);
 			var faceClassifier = CalTechWebFacesSvmTrainer.TrainFromCaltechData(caltechWebFacesSourceImageFolder, groundTruthTextFile, sampleWidth, sampleHeight, blockSize, minimumNumberOfImagesToTrainWith, normaliser, timer.Log);
+
+			var faceDetector = new FaceDetector(DefaultConfiguration.Instance, timer.Log);
 			var possibleFaceRegionsInImages = new[]
 				{
 					"TigerWoods.gif"
@@ -41,7 +42,7 @@ namespace Tester
 				.Select(file => new
 				{
 					File = file,
-					PossibleFaceImages = ExtractPossibleFaceRegionsFromImage(file, timer.Log)
+					PossibleFaceImages = ExtractPossibleFaceRegionsFromImage(file, faceDetector, timer.Log)
 				})
 				.Select(fileAndPossibleFaceRegions => new
 				{
@@ -114,20 +115,19 @@ namespace Tester
 			Console.ReadLine();
 		}
 
-		private static IEnumerable<PossibleFaceRegion> ExtractPossibleFaceRegionsFromImage(FileInfo file, Action<string> logger)
+		private static IEnumerable<PossibleFaceRegion> ExtractPossibleFaceRegionsFromImage(FileInfo file, ILookForPossibleFaceRegions faceDetector, Action<string> logger)
 		{
 			if (file == null)
 				throw new ArgumentNullException(nameof(file));
+			if (faceDetector == null)
+				throw new ArgumentNullException(nameof(faceDetector));
 			if (logger == null)
 				throw new ArgumentNullException(nameof(logger));
 
 			var config = DefaultConfiguration.Instance;
-			var faceDetector = new FaceDetector(config, logger);
 			using (var source = new Bitmap(file.FullName))
 			{
-				var faceRegions = faceDetector.GetPossibleFaceRegions(source);
-				logger($"Complete - {faceRegions.Count()} region(s) identified");
-				foreach (var faceRegion in faceRegions)
+				foreach (var faceRegion in faceDetector.GetPossibleFaceRegions(source))
 					yield return new PossibleFaceRegion(source.Clone(faceRegion, source.PixelFormat), faceRegion);
 			}
 		}
