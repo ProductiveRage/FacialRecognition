@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using Common;
 
 namespace FaceDetection
@@ -8,7 +8,7 @@ namespace FaceDetection
 	public static class DataRectangleExtensions
 	{
 		/// <summary>
-		/// This reduces variance in data by breaking it into blocks and overwriting the block's data with a single value - the median value for that block
+		/// This reduces variance in data by replacing each value with the median value from a block drawn around it (it is helpful in reducing noise in an image)
 		/// </summary>
 		public static DataRectangle<double> MedianFilter<TSource>(this DataRectangle<TSource> source, Func<TSource, double> valueExtractor, int blockSize)
 		{
@@ -19,31 +19,37 @@ namespace FaceDetection
 			if (blockSize <= 0)
 				throw new ArgumentOutOfRangeException(nameof(blockSize));
 
+			return source.Transform(currentValue => valueExtractor(currentValue)).MedianFilter(blockSize);
+		}
+
+		private static DataRectangle<double> MedianFilter(this DataRectangle<double> source, int blockSize)
+		{
+			if (source == null)
+				throw new ArgumentNullException(nameof(source));
+			if (blockSize <= 0)
+				throw new ArgumentOutOfRangeException(nameof(blockSize));
+
 			var result = new double[source.Width, source.Height];
-			var distanceBetweenPoints = blockSize + 1; // After each media is taken, we need to move past the current pixel and then the expansions distance to get the new centre
-			for (var x = 0; x < source.Width; x += distanceBetweenPoints)
+			for (var x = 0; x < source.Width; x++)
 			{
-				for (var y = 0; y < source.Height; y += distanceBetweenPoints)
+				for (var y = 0; y < source.Height; y++)
 				{
-					// We start at the top-left and move across and down from there (so GetRectangleAround never expands up and left, it only expands down and right)
-					var areaToMedianOver = source.GetRectangleAround(new Point(x, y), distanceToExpandLeftAndUp: 0, distanceToExpandRightAndDown: blockSize);
-					var valuesToGetMedianFrom = new double[areaToMedianOver.Width * areaToMedianOver.Height];
-					var i = 0;
-					for (var xToGetMedianFrom = areaToMedianOver.Left; xToGetMedianFrom < areaToMedianOver.Right; xToGetMedianFrom++)
+					var top = Math.Max(0, y - (blockSize / 2));
+					var bottom = Math.Min(source.Height, top + blockSize);
+					var left = Math.Max(0, x - (blockSize / 2));
+					var right = Math.Min(source.Width, left + blockSize);
+					var blockWidth = right - left;
+					var blockHeight = bottom - top;
+					var valuesInArea = new List<double>(capacity: blockWidth * blockHeight);
+					for (var xInner = left; xInner < right; xInner++)
 					{
-						for (var yToGetMedianFrom = areaToMedianOver.Top; yToGetMedianFrom < areaToMedianOver.Bottom; yToGetMedianFrom++)
+						for (var yInner = top; yInner < bottom; yInner++)
 						{
-							var value = source[xToGetMedianFrom, yToGetMedianFrom];
-							valuesToGetMedianFrom[i] = valueExtractor(value);
-							i++;
+							valuesInArea.Add(source[xInner, yInner]); // TODO: Would it be faster to directly access source array?
 						}
 					}
-					var medianValue = valuesToGetMedianFrom.OrderBy(value => value).Skip(valuesToGetMedianFrom.Length / 2).First();
-					for (var xToGetMedianFrom = areaToMedianOver.Left; xToGetMedianFrom < areaToMedianOver.Right; xToGetMedianFrom++)
-					{
-						for (var yToGetMedianFrom = areaToMedianOver.Top; yToGetMedianFrom < areaToMedianOver.Bottom; yToGetMedianFrom++)
-							result[xToGetMedianFrom, yToGetMedianFrom] = medianValue;
-					}
+					valuesInArea.Sort();
+					result[x, y] = valuesInArea[valuesInArea.Count / 2];
 				}
 			}
 			return DataRectangle.For(result);

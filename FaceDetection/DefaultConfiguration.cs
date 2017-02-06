@@ -15,7 +15,7 @@ namespace FaceDetection
 		/// If either dimension of the input image is larger than this then it will be resized before processing so that the largest edge is this many pixels long (this potential
 		/// face region rectangles returned will be scaled back up so that they correspond to the original image)
 		/// </summary>
-		public int MaximumImageDimension { get { return 600; } } // 600 strikes a reasonable balance between successfully matching faces in my current (small) sample data while performing the work quickly
+		public int MaximumImageDimension { get { return 400; } } // 400 strikes a reasonable balance between successfully matching faces in my current (small) sample data while performing the work quickly
 
 		/// <summary>
 		/// When smoothening colour and texture amplitude data, the magnitude of smoothening depends upon the size of the source image - large images will need more smoothening
@@ -28,11 +28,11 @@ namespace FaceDetection
 			if (height <= 0)
 				throw new ArgumentOutOfRangeException(nameof(height));
 
-			return (int)Math.Round((double)(width + height) / 640); // Originally worked with dividing by 320 here but I've had better results by using 640
+			return (int)Math.Round((double)(width + height) / 320);
 		}
 
-		public int TextureAmplitudeFirstPassSmoothenMultiplier { get { return 8; } }
-		public int TextureAmplitudeSecondPassSmoothenMultiplier { get { return 12; } }
+		public int TextureAmplitudeFirstPassSmoothenMultiplier { get { return 2; } }
+		public int TextureAmplitudeSecondPassSmoothenMultiplier { get { return 3; } }
 
 		public DataRectangle<IRgBy> IRgByCalculator(DataRectangle<RGB> values)
 		{
@@ -62,7 +62,7 @@ namespace FaceDetection
 					((colour.Hue >= 120) && (colour.Hue <= 160) && (colour.Saturation >= 10) && (colour.Saturation <= 60)) ||
 					((colour.Hue >= 160) && (colour.Hue <= 180) && (colour.Saturation >= 30) && (colour.Saturation <= 30)) // Reduced acceptable saturation so that strong yellow tones aren't as readibly recognised
 				)
-				&& (colour.TextureAmplitude <= 20); // I've found that some photos struggle to match faces with low texture amplitudes so I've jumped this value up a lot
+				&& (colour.TextureAmplitude <= 5); // I've found that some photos struggle to match faces with low texture amplitudes so I've jumped this value up a lot
 		}
 		/// <summary>
 		/// After the first skin mask pass, a number of subsequent passes (see NumberOfSkinMaskRelaxedExpansions) are made to expand the mask to include any nearby pixels
