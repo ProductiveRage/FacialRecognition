@@ -58,8 +58,7 @@ namespace FaceDetection
 		public bool SkinFilter(HueSaturation colour)
 		{
 			return (
-					((colour.Hue >= 105) && (colour.Hue <= 120) && (colour.Saturation >= 10) && (colour.Saturation <= 60)) || // Reduced minimum hue slightly to allow some lighter tones
-					((colour.Hue >= 120) && (colour.Hue <= 160) && (colour.Saturation >= 10) && (colour.Saturation <= 60)) ||
+					((colour.Hue >= 105) && (colour.Hue <= 160) && (colour.Saturation >= 10) && (colour.Saturation <= 60)) || // Reduced minimum hue slightly to allow some lighter tones
 					((colour.Hue >= 160) && (colour.Hue <= 180) && (colour.Saturation >= 30) && (colour.Saturation <= 30)) // Reduced acceptable saturation so that strong yellow tones aren't as readibly recognised
 				)
 				&& (colour.TextureAmplitude <= 5); // I've found that some photos struggle to match faces with low texture amplitudes so I've jumped this value up a lot
