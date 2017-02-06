@@ -42,7 +42,7 @@ namespace Tester
 				.Select(file => new
 				{
 					File = file,
-					PossibleFaceImages = ExtractPossibleFaceRegionsFromImage(file, faceDetector, timer.Log)
+					PossibleFaceImages = ExtractPossibleFaceRegionsFromImage(file, faceDetector, timer.Log).ToArray() // Prevent any potential repeated evaluation later on
 				})
 				.Select(fileAndPossibleFaceRegions => new
 				{
