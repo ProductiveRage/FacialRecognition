@@ -103,7 +103,7 @@ namespace FaceDetection
 				var areaOfThisArea = GetArea(area);
 				var areasThatMakesThisOneObsolete = allowedAreas
 					.Where(other => GetArea(other) > (areaOfThisArea * 2))
-					.Where(other => { other.Intersect(area); return GetArea(other) > (0.75 * areaOfThisArea); });
+					.Where(other => { other.Intersect(area); return GetArea(other) > (0.4 * areaOfThisArea); });
 				if (!areasThatMakesThisOneObsolete.Any())
 					yield return area;
 			}
