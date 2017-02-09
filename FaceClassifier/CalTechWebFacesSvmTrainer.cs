@@ -90,6 +90,9 @@ namespace FaceClassifier
 			logger("Time to teach SVM: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
 			timer.Restart();
 
+			// The SVM kernel contains lots of information from the training process which can be reduced down (from the Compress method's summary documentation: "If this machine has
+			// a linear kernel, compresses all support vectors into a single parameter vector)". This additional data is of no use to use so we can safely get rid of it - this will
+			// be beneficial if we decide to persist the trained SVM since they will be less data to serialise.
 			svm.Compress();
 			logger("Time to compress SVM: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
 			timer.Restart();
