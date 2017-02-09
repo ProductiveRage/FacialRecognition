@@ -83,9 +83,7 @@ namespace FaceClassifier
 			logger("Time to load image data: " + timer.Elapsed.TotalSeconds.ToString("0.00") + "s");
 			timer.Restart();
 
-			var kernel = new Linear();
-			var complexity = 1;
-			var smo = new SequentialMinimalOptimization<Linear> { Kernel = kernel, Complexity = complexity };
+			var smo = new SequentialMinimalOptimization<Linear>();
 			var inputs = trainingDataOfHogsAndIsFace.Select(dataAndResult => dataAndResult.Item1).ToArray();
 			var outputs = trainingDataOfHogsAndIsFace.Select(dataAndResult => dataAndResult.Item2).ToArray();
 			var svm = smo.Learn(inputs, outputs);
