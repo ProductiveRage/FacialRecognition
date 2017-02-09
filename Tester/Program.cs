@@ -42,7 +42,7 @@ namespace Tester
 				.Select(file => new
 				{
 					File = file,
-					PossibleFaceImages = ExtractPossibleFaceRegionsFromImage(file, faceDetector, timer.Log).ToArray() // Prevent any potential repeated evaluation later on
+					PossibleFaceImages = ExtractPossibleFaceRegionsFromImage(file, faceDetector, (double)sampleWidth / sampleHeight, timer.Log).ToArray() // Prevent any potential repeated evaluation later on
 				})
 				.Select(fileAndPossibleFaceRegions => new
 				{
@@ -115,12 +115,14 @@ namespace Tester
 			Console.ReadLine();
 		}
 
-		private static IEnumerable<PossibleFaceRegion> ExtractPossibleFaceRegionsFromImage(FileInfo file, ILookForPossibleFaceRegions faceDetector, Action<string> logger)
+		private static IEnumerable<PossibleFaceRegion> ExtractPossibleFaceRegionsFromImage(FileInfo file, ILookForPossibleFaceRegions faceDetector, double idealImageAspectRatio, Action<string> logger)
 		{
 			if (file == null)
 				throw new ArgumentNullException(nameof(file));
 			if (faceDetector == null)
 				throw new ArgumentNullException(nameof(faceDetector));
+			if (idealImageAspectRatio <= 0)
+				throw new ArgumentOutOfRangeException(nameof(idealImageAspectRatio), "must be greater than zero");
 			if (logger == null)
 				throw new ArgumentNullException(nameof(logger));
 
@@ -128,23 +130,68 @@ namespace Tester
 			using (var source = new Bitmap(file.FullName))
 			{
 				foreach (var faceRegion in faceDetector.GetPossibleFaceRegions(source))
-					yield return new PossibleFaceRegion(source.Clone(faceRegion, source.PixelFormat), faceRegion);
+				{
+					Rectangle faceRegionAtIdealAspectRatio;
+					var regionAspectRatio = (double)faceRegion.Width / faceRegion.Height;
+					if (regionAspectRatio < idealImageAspectRatio)
+					{
+						// Face region is narrower than the aspect ratio that we want extracted sub-images to be for the next processing step, so try to expand its width
+						var idealWidth = (int)(faceRegion.Height / idealImageAspectRatio);
+						var amountToAddEitherSide = (idealWidth - faceRegion.Width) / 2;
+						faceRegionAtIdealAspectRatio = Rectangle.FromLTRB(
+							left: Math.Max(0, faceRegion.Left - amountToAddEitherSide),
+							right: Math.Min(source.Width, faceRegion.Right + amountToAddEitherSide),
+							top: faceRegion.Top,
+							bottom: faceRegion.Bottom
+						);
+					}
+					else
+					{
+						// Face region is wider than the aspect ratio that we want extracted sub-images to be for the next processing step, so try to expand its height
+						var idealHeight = (int)(faceRegion.Width / idealImageAspectRatio);
+						var amountToAddEitherSide = (idealHeight - faceRegion.Height) / 2;
+						faceRegionAtIdealAspectRatio = Rectangle.FromLTRB(
+							left: faceRegion.Left,
+							right: faceRegion.Right,
+							top: Math.Max(0, faceRegion.Top - amountToAddEitherSide),
+							bottom: Math.Min(source.Height, faceRegion.Bottom + amountToAddEitherSide)
+						);
+					}
+					yield return new PossibleFaceRegion(
+						source.Clone(faceRegionAtIdealAspectRatio, source.PixelFormat), // Extract a sub-image based upon the detected region but matching the desired aspect ratio (as close as possible)
+						faceRegion, // Report the actual detected face region in the result
+						idealImageAspectRatio
+					);
+				}
 			}
 		}
 
 		private sealed class PossibleFaceRegion
 		{
-			public PossibleFaceRegion(Bitmap extractedImage, Rectangle regionInSource)
+			public PossibleFaceRegion(Bitmap extractedImage, Rectangle regionInSource, double idealImageAspectRatio)
 			{
 				if (extractedImage == null)
 					throw new ArgumentNullException(nameof(extractedImage));
-				if ((regionInSource.Width != extractedImage.Width) || (regionInSource.Height != extractedImage.Height))
-					throw new ArgumentException($"Specified {nameof(regionInSource)} dimensions do not match {nameof(extractedImage)} image");
+				if ((extractedImage.Width <= 0) || (extractedImage.Height <= 0))
+					throw new ArgumentException($"Specified {nameof(extractedImage)} contains no pixels");
+				if ((regionInSource.Width <= 0) || (regionInSource.Height <= 0))
+					throw new ArgumentException($"Specified {nameof(regionInSource)} dimensions are invalid, at least one is zero or less");
+				if (idealImageAspectRatio <= 0)
+					throw new ArgumentOutOfRangeException(nameof(idealImageAspectRatio), "must be greater than zero");
+
 				ExtractedImage = extractedImage;
 				RegionInSource = regionInSource;
+				IdealImageAspectRatio = idealImageAspectRatio;
 			}
+
+			/// <summary>
+			/// The dimensions of this image may not match the dimensions of RegionInSource as the sub-image extracted for further processing should match the specified
+			/// IdealImageAspectRatio as closely as possible (so the ExtractedImage may be wider than the detected RegionInSource if the detected region was narrower
+			/// than the IdealImageAspectRatio specifies)
+			/// </summary>
 			public Bitmap ExtractedImage { get; }
 			public Rectangle RegionInSource { get; }
+			public double IdealImageAspectRatio { get; }
 		}
 
 		private static void WriteOutputFile(string outputFilename, Bitmap source, IEnumerable<Rectangle> faceRegions, Color outline)
