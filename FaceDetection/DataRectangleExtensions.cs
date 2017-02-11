@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
+using System.Threading.Tasks;
 using Common;
 
 namespace FaceDetection
@@ -30,13 +32,17 @@ namespace FaceDetection
 				throw new ArgumentOutOfRangeException(nameof(blockSize));
 
 			var result = new double[source.Width, source.Height];
-			for (var x = 0; x < source.Width; x++)
-			{
-				for (var y = 0; y < source.Height; y++)
+			var allLocationsInSource = Enumerable.Range(0, source.Width)
+				.SelectMany(x => Enumerable.Range(0, source.Height).Select(y =>
+					new Point(x, y)
+				));
+			Parallel.ForEach(
+				allLocationsInSource,
+				location =>
 				{
-					var top = Math.Max(0, y - (blockSize / 2));
+					var top = Math.Max(0, location.Y - (blockSize / 2));
 					var bottom = Math.Min(source.Height, top + blockSize);
-					var left = Math.Max(0, x - (blockSize / 2));
+					var left = Math.Max(0, location.X - (blockSize / 2));
 					var right = Math.Min(source.Width, left + blockSize);
 					var blockWidth = right - left;
 					var blockHeight = bottom - top;
@@ -45,13 +51,13 @@ namespace FaceDetection
 					{
 						for (var yInner = top; yInner < bottom; yInner++)
 						{
-							valuesInArea.Add(source[xInner, yInner]); // TODO: Would it be faster to directly access source array?
+							valuesInArea.Add(source[xInner, yInner]);
 						}
 					}
 					valuesInArea.Sort();
-					result[x, y] = valuesInArea[valuesInArea.Count / 2];
+					result[location.X, location.Y] = valuesInArea[valuesInArea.Count / 2];
 				}
-			}
+			);
 			return DataRectangle.For(result);
 		}
 
